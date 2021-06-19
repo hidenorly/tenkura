@@ -32,11 +32,11 @@ def getMountainKeys(key):
 def getClimbScore(url):
   result = None
 
-  if url.startswith("https://tkcdn1.n-kishou.co.jp/image/images/kanko/tozan/mnt3.gif"):
+  if url.endswith("mnt3.gif"):
     result = "C"
-  elif url.startswith("https://tkcdn1.n-kishou.co.jp/image/images/kanko/tozan/mnt2.gif"):
+  elif url.endswith("mnt2.gif"):
     result = "B"
-  elif url.startswith("https://tkcdn1.n-kishou.co.jp/image/images/kanko/tozan/mnt1.gif"):
+  elif url.endswith("mnt1.gif"):
     result = "A"
 
   return result
@@ -137,7 +137,8 @@ if __name__=="__main__":
     for aDispKey in dispKeys.keys():
       print( aDispKey )
       for aMountainName, theWeather in mountainWeathers.items():
-        print( ljust_jp(aMountainName, 20) + ": " + " ".join(map(str, theWeather[aDispKey])) )
+        if aDispKey in theWeather:
+          print( ljust_jp(aMountainName, 20) + ": " + " ".join(map(str, theWeather[aDispKey])) )
       print( "" )
 
 
