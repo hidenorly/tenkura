@@ -14,6 +14,8 @@
 
 import sys
 import requests
+import argparse
+import unicodedata
 from bs4 import BeautifulSoup
 import mountainDic
 
@@ -40,9 +42,7 @@ def getClimbScore(url):
   return result
 
 def filterWeather(weatherResult):
-  result = []
-  result.append(weatherResult[0])
-
+  result = {}
   candidates = {}
 
   i=0
@@ -59,8 +59,7 @@ def filterWeather(weatherResult):
             candidates[text] = i
 
   for key, index in candidates.items():
-    result.append(key)
-    result.append(weatherResult[index])
+    result[key] = weatherResult[index]
 
   return result
 
@@ -96,22 +95,51 @@ def getWeather(url):
 
   return filterWeather(result)
 
+def ljust_jp(value, length, pad = " "):
+  count_length = 0
+  for char in value.encode().decode('utf8'):
+    if ord(char) <= 255:
+      count_length += 1
+    else:
+      count_length += 2
+  return value + pad * (length-count_length)
+
 
 if __name__=="__main__":
-  argLength = len(sys.argv)
-  if  argLength > 1:
-    i = 1
-    while i < argLength:
-      mountains.append( sys.argv[i] )
-      i = i + 1
+  parser = argparse.ArgumentParser(description='Parse command line options.')
+  parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
+  parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
+  args = parser.parse_args()
 
+  if len(args.args) == 0:
+    parser.print_help()
+    exit(-1)
+
+  mountains = args.args
+
+  mountainWeathers={}
   for aMountain in mountains:
     mountainKeys = getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      print( theMountain + " : " )
-      result = getWeather( mountainDic[theMountain] )
-      for aResult in result:
-        print( aResult )
+      mountainWeathers[ theMountain ] = getWeather( mountainDic[theMountain] )
+
+  if False == args.compare:
+    for aMountain, theWeather in mountainWeathers.items():
+      print( aMountain + " : " )
+      for key, value in theWeather.items():
+        print( key + ":" + " ".join(map(str, value)) )
+  else:
+    dispKeys = {}
+    for aMountain, theWeather in mountainWeathers.items():
+      for key, value in theWeather.items():
+        dispKeys[key] = True
+
+    for aDispKey in dispKeys.keys():
+      print( aDispKey )
+      for aMountainName, theWeather in mountainWeathers.items():
+        print( ljust_jp(aMountainName, 20) + ": " + " ".join(map(str, theWeather[aDispKey])) )
+      print( "" )
+
 
 
 
