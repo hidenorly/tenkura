@@ -26,14 +26,15 @@ def getBaseUrl(url):
     baseUrl =  url[0:baseUrlIndex+1]
   return baseUrl
 
-def getUniqueKey(hashmap, key):
+def getUniqueKeyValue(hashmap, key, value):
   if key in hashmap:
-    countIndex = key.rfind("_")
-    if countIndex != -1:
-      count = int( key[countIndex+1:key.len()] ) + 1
-      key = key[0:countIndex+1]+str(count)
-    else:
-      key = key+"_2"
+    if hashmap[key]!=value:
+      countIndex = key.rfind("_")
+      if countIndex != -1:
+        count = int( key[countIndex+1:key.len()] ) + 1
+        key = key[0:countIndex+1]+str(count)
+      else:
+        key = key+"_2"
   return key
 
 def getLinks(articleUrl, result):
@@ -52,20 +53,27 @@ def getLinks(articleUrl, result):
           theUrl = aLink.get("href").strip()
           theText = aLink.get_text().strip()
           if isMountainLink(theUrl):
-            result[getUniqueKey(result, theText)] = baseUrl+theUrl
+            value = baseUrl+theUrl
+            result[getUniqueKeyValue(result, theText, value)] = baseUrl+theUrl
   return result
 
 
-links = {}
-mountainLinks = []
-for aLink in sys.argv:
-  if aLink.startswith("http"):
-    mountainLinks.append( aLink )
+if __name__=="__main__":
+  links = {}
+  mountainLinks = []
+  for aLink in sys.argv:
+    if aLink.startswith("http"):
+      mountainLinks.append( aLink )
 
-for aMountainLink in mountainLinks:
-  links = getLinks(aMountainLink, links)
+  for aMountainLink in mountainLinks:
+    links = getLinks(aMountainLink, links)
 
-print("mountainDic={")
-for theText, theUrl in links.items():
-	print('  "'+theText+'":"'+theUrl+'",')
-print("}")
+  print("mountainDic={")
+  for theText, theUrl in links.items():
+  	print('  "'+theText+'":"'+theUrl+'",')
+  print("}")
+
+  print('''
+def getMountainDic():
+  return mountainDic
+''')
