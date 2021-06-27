@@ -199,6 +199,25 @@ def ljust_jp(value, length, pad = " "):
       count_length += 2
   return value + pad * (length-count_length)
 
+def getCategory(key):
+  index = key.find("_")
+  if index!=-1:
+    key = key[0:index]
+  return key
+
+def get_max_length_per_category(categorizedData):
+  result={}
+  for key, theData in categorizedData.items():
+    if isinstance(theData, dict):
+      for key, data in theData.items():
+        if( key!="url"):
+          key = getCategory(key)
+          data = " ".join(map(str, data))
+          theLen = len(data)
+          if ((key in result) and (result[key] < theLen)) or not (key in result):
+            result[key] = theLen
+  return result
+
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
@@ -218,12 +237,19 @@ if __name__=="__main__":
     for theMountain in mountainKeys:
       mountainWeathers[ theMountain ] = getWeather( mountainDic[theMountain] )
 
+  perKeyMaxLengths = get_max_length_per_category(mountainWeathers)
+
   if False == args.compare:
     for aMountain, theWeather in mountainWeathers.items():
       print( aMountain + " : " )
       for key, value in theWeather.items():
         if( key!="url"):
-          print( ljust_jp(key, 20) + ":" + " ".join(map(str, value)) )
+          thePaddingLength = 0
+          theDispData = " ".join(map(str, value))
+          if key.startswith("登山") and not key.endswith("週間予報"):
+            theCategoryKey = getCategory(key)
+            thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
+          print( ljust_jp(key, 20) + ":" + " "*thePaddingLength + theDispData )
         else:
           print( value )
       print( "" )
@@ -239,7 +265,11 @@ if __name__=="__main__":
           for aMountainName, theWeather in mountainWeathers.items():
             if aDispKey in theWeather:
               if( aDispKey != "url"):
-                print( ljust_jp(aMountainName, 20) + ": " + " ".join(map(str, theWeather[aDispKey])) )
+                theDispData = " ".join(map(str, theWeather[aDispKey]))
+                if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
+                  theCategoryKey = getCategory(aDispKey)
+                  thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
+                print( ljust_jp(aMountainName, 20) + ": " + " "*thePaddingLength + theDispData )
           print( "" )
 
     print("URL:")
