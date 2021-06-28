@@ -116,9 +116,10 @@ def getWeatherScore(url):
   return result
 
 def getFormatedKeyString(text):
-#  result = text.replace("今 日  ", "今日")
-#  result = text.replace("明 日  ", "明日")
-  result = text.replace("週　間　予　報", "週間予報")
+  result = text
+  result = result.replace("今 日  ", "今日 ")
+  result = result.replace("明 日  ", "明日 ")
+  result = result.replace("週　間　予　報", "週間予報")
   return result
 
 def filterWeather(weatherResult):
@@ -210,7 +211,7 @@ def get_max_length_per_category(categorizedData):
   for key, theData in categorizedData.items():
     if isinstance(theData, dict):
       for key, data in theData.items():
-        if( key!="url"):
+        if key!="url" and key!="score":
           key = getCategory(key)
           data = " ".join(map(str, data))
           theLen = len(data)
@@ -218,11 +219,40 @@ def get_max_length_per_category(categorizedData):
             result[key] = theLen
   return result
 
+def getRecommendationScore(value):
+  if "A" == value:
+    return 2
+  elif "B" == value:
+    return 1
+  elif "C" == value:
+    return 0
+  elif value == "fine":
+    return 3
+  elif value.find("rain")!=-1:
+    return 0
+  elif value.find("fine")!=-1:
+    return 2
+  elif value.find("cloud")!=-1:
+    return 1
+  return 0
+
+def addingScoringMountain( mountain, scoreKey ):
+  if scoreKey:
+    score = 0
+    for key,value in mountain.items():
+      if key.find(scoreKey)!=-1:
+        if isinstance(value, list):
+          for aData in value:
+            score = score + getRecommendationScore(aData)
+    mountain["score"] = score
+  return mountain
+
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
   parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
   parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
+  parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   args = parser.parse_args()
 
   if len(args.args) == 0:
@@ -235,23 +265,24 @@ if __name__=="__main__":
   for aMountain in mountains:
     mountainKeys = getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      mountainWeathers[ theMountain ] = getWeather( mountainDic[theMountain] )
+      mountainWeathers[ theMountain ] = addingScoringMountain( getWeather( mountainDic[theMountain] ), args.score )
 
   perKeyMaxLengths = get_max_length_per_category(mountainWeathers)
+  nonDispKeys = ["url", "score"]
 
   if False == args.compare:
     for aMountain, theWeather in mountainWeathers.items():
       print( aMountain + " : " )
       for key, value in theWeather.items():
-        if( key!="url"):
+        if not key in nonDispKeys:
           thePaddingLength = 0
           theDispData = " ".join(map(str, value))
           if key.startswith("登山") and not key.endswith("週間予報"):
             theCategoryKey = getCategory(key)
             thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
-          print( ljust_jp(key, 20) + ":" + " "*thePaddingLength + theDispData )
+          print( ljust_jp(key, 20) + ": " + " "*thePaddingLength + theDispData )
         else:
-          print( value )
+          print( key.ljust(20) + ": " + str(value) )
       print( "" )
   else:
     dispKeys = {}
@@ -260,18 +291,21 @@ if __name__=="__main__":
         dispKeys[key] = True
 
     for aDispKey in dispKeys.keys():
-        if( aDispKey != "url"):
+        if not aDispKey in nonDispKeys:
           print( aDispKey )
           for aMountainName, theWeather in mountainWeathers.items():
-            if aDispKey in theWeather:
-              if( aDispKey != "url"):
-                theDispData = " ".join(map(str, theWeather[aDispKey]))
-                if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
-                  theCategoryKey = getCategory(aDispKey)
-                  thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
-                print( ljust_jp(aMountainName, 20) + ": " + " "*thePaddingLength + theDispData )
+            if aDispKey in theWeather and not aDispKey in nonDispKeys:
+              theDispData = " ".join(map(str, theWeather[aDispKey]))
+              thePaddingLength = 0
+              if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
+                theCategoryKey = getCategory(aDispKey)
+                thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
+              print( ljust_jp(aMountainName, 20) + ": " + " "*thePaddingLength + theDispData )
           print( "" )
 
-    print("URL:")
-    for aMountainName, theWeather in mountainWeathers.items():
-      print( ljust_jp(aMountainName, 20) + ": " + theWeather["url"] )
+    for aDispKey in nonDispKeys:
+      print(aDispKey+":")
+      for aMountainName, theWeather in mountainWeathers.items():
+        if aDispKey in theWeather:
+          print( ljust_jp(aMountainName, 20) + ": " + str( theWeather[aDispKey] ) )
+      print( "" )
