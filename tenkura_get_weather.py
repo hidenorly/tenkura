@@ -18,9 +18,11 @@ import argparse
 import unicodedata
 from bs4 import BeautifulSoup
 import mountainDic
+import mountainInfoDic
 
 mountains = []
 mountainDic = mountainDic.getMountainDic()
+mountainInfoDic = mountainInfoDic.getMountainInfoDic()
 
 def getMountainKeys(key):
   result = []
@@ -267,6 +269,36 @@ def addingScoringMountain( mountain, scoreKey ):
   return mountain
 
 
+def getMountainDetailInfo(mountainName):
+  result = None
+
+  if( mountainName in mountainInfoDic):
+    result = mountainInfoDic[mountainName]
+  else:
+    pos = mountainName.find("_")
+    if pos != -1:
+      mountainName = mountainName[0 : pos - 1 ]
+    pos = mountainName.find("（")
+    if pos != -1:
+      mountainName = mountainName[0 : pos - 1 ]
+    for aMountainName, anInfo in mountainInfoDic.items():
+      if aMountainName.find( mountainName )!=-1:
+        result = anInfo
+        break
+
+  return result
+
+
+def printMountainDetailInfo(mountainName):
+  info = getMountainDetailInfo( mountainName )
+  if info!=None:
+    print( ljust_jp(" altitude", 20) + ": " + info["altitude"] )
+    print( ljust_jp(" area", 20) + ": " + info["area"] )
+    print( ljust_jp(" difficulty", 20) + ": " + info["difficulty"] )
+    print( ljust_jp(" fitnessLevel", 20) + ": " + info["fitnessLevel"] )
+
+
+
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
   parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
@@ -302,7 +334,7 @@ if __name__=="__main__":
           print( ljust_jp(key, 20) + ": " + " "*thePaddingLength + theDispData )
         else:
           print( key.ljust(20) + ": " + str(value) )
-      print( "" )
+      printMountainDetailInfo( aMountain )
   else:
     dispKeys = {}
     for aMountain, theWeather in mountainWeathers.items():
@@ -327,4 +359,5 @@ if __name__=="__main__":
       for aMountainName, theWeather in mountainWeathers.items():
         if aDispKey in theWeather:
           print( ljust_jp(aMountainName, 20) + ": " + str( theWeather[aDispKey] ) )
+          printMountainDetailInfo( aMountainName )
       print( "" )
