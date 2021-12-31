@@ -117,8 +117,6 @@ def getWeatherScore(url):
 
 def getFormatedKeyString(text):
   result = text
-  result = result.replace("今 日  ", "今日 ")
-  result = result.replace("明 日  ", "明日 ")
   result = result.replace("週　間　予　報", "週間予報")
   return result
 
@@ -126,19 +124,40 @@ def filterWeather(weatherResult):
   result = {}
   candidates = {}
 
+  nResultLen = len(weatherResult)
+  foundWeek = False
+  modeClimb = True
+  key = ""
+
   i=0
   for text in weatherResult:
-    i=i+1
-    nResultLen = len(weatherResult)
+    currentLength = 0
+
     if isinstance(text, str):
-      if text.find("今 日  ")!=-1 or text.find("明 日  ")!=-1 or text.find("週　間　予　報")!=-1 :
+      prevModeClimb = modeClimb
+      if text.find("登山")!=-1:
+        modeClimb = True
+      if text.find("天気")!=-1:
+        modeClimb = False
+      if modeClimb != prevModeClimb:
+        foundWeek = False
+
+      if ( text.find("/")!=-1 and text.find("(")!=-1 and text.find(")")!=-1 ) or text.find("週　間　予　報")!=-1 :
         text = getFormatedKeyString(text)
-        currentLength = 0
-        if text in candidates:
-          currentLength = candidates[text]
-        if i<nResultLen and isinstance(weatherResult[i], list):
-          if len(weatherResult[i]) > currentLength:
-            candidates[text] = i
+        if not foundWeek:
+          if text.find("週間予報")!=-1:
+            foundWeek = True
+            key = text
+          else:
+            key = text
+
+    if key in candidates:
+      currentLength = candidates[key]
+
+    i=i+1
+    if i<nResultLen and isinstance(weatherResult[i], list):
+      if len(weatherResult[i]) > currentLength:
+        candidates[key] = i
 
   for key, index in candidates.items():
     result[key] = weatherResult[index]
@@ -170,7 +189,7 @@ def getWeather(url):
           if None != cols:
             for aCol in cols:
               text = aCol.getText().strip()
-              if text.find("今 日  ")!=-1 or text.find("明 日  ")!=-1 or text.find("週　間　予　報")!=-1:
+              if ( text.find("/")!=-1 and text.find("(")!=-1 and text.find(")")!=-1 and text.find("風(m/s)")==-1) or text.find("週　間　予　報")!=-1:
                 result.append("_"+text)
               imgs = aCol.find_all("img")
               for anImg in imgs:
