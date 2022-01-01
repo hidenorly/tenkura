@@ -1,4 +1,5 @@
 mountainInfos=[
+  {"name":"", "type":"100famous"},
   {"name":"利尻岳","area":"北海道", "altitude":"1719m", "difficulty":"★★", "fitnessLevel":"★★"},
   {"name":"羅臼岳","area":"北海道", "altitude":"1661m", "difficulty":"★★", "fitnessLevel":"★★"},
   {"name":"斜里岳","area":"北海道", "altitude":"1547m", "difficulty":"★", "fitnessLevel":"★★"},
@@ -66,6 +67,8 @@ mountainInfos=[
   {"name":"阿蘇山","area":"九州", "altitude":"1592m", "difficulty":"★★", "fitnessLevel":"★★"},
   {"name":"霧島山","area":"九州", "altitude":"1700m", "difficulty":"★", "fitnessLevel":"★★"},
   {"name":"開聞岳","area":"九州", "altitude":"922m", "difficulty":"★", "fitnessLevel":"★"},
+
+  {"name":"", "type":"300famous"},
   {"name":"ニセイカウシュッペ山","area":"北海道", "altitude":"1883m", "difficulty":"★★", "fitnessLevel":"22"},
   {"name":"オプタテシケ山","area":"北海道", "altitude":"2013m", "difficulty":"★★★★", "fitnessLevel":"44"},
   {"name":"神威岳","area":"北海道", "altitude":"1600m", "difficulty":"★★★★", "fitnessLevel":"41"},
@@ -172,6 +175,7 @@ mountainInfos=[
 def getMountainInfoDic():
   result = {}
   tmp = {}
+  type = ""
 
   for anInfo in mountainInfos:
     name = anInfo["name"]
@@ -182,6 +186,10 @@ def getMountainInfoDic():
     else:
       tmp[name] = 1
 
+    if "type" in anInfo:
+      type = anInfo["type"]
+    else:
+      anInfo["type"] = type
     if not "area" in anInfo:
       anInfo["area"] = ""
     if not "alttitude" in anInfo:
@@ -191,6 +199,7 @@ def getMountainInfoDic():
     if not "fitnessLevel" in anInfo:
       anInfo["fitnessLevel"] = ""
 
-    result[ name ] = anInfo
+    if name!="":
+      result[ name ] = anInfo
 
   return result

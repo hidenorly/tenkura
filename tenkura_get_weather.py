@@ -296,7 +296,8 @@ def printMountainDetailInfo(mountainName):
     print( ljust_jp(" area", 20) + ": " + info["area"] )
     print( ljust_jp(" difficulty", 20) + ": " + info["difficulty"] )
     print( ljust_jp(" fitnessLevel", 20) + ": " + info["fitnessLevel"] )
-
+    print( ljust_jp(" type", 20) + ": " + info["type"] )
+    print( "" )
 
 
 if __name__=="__main__":
