@@ -120,6 +120,8 @@ def getWeatherScore(url):
 def getFormatedKeyString(text):
   result = text
   result = result.replace("週　間　予　報", "週間予報")
+  result = result.replace("明 日", "  明日")
+  result = result.replace("あさって", "明後日")
   return result
 
 def filterWeather(weatherResult):
