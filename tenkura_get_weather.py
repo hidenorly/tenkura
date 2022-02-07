@@ -120,8 +120,9 @@ def getWeatherScore(url):
 def getFormatedKeyString(text):
   result = text
   result = result.replace("週　間　予　報", "週間予報")
-  result = result.replace("明 日", "  明日")
+  result = result.replace("明 日", "明日")
   result = result.replace("あさって", "明後日")
+  result = result.replace("  ", ":")
   return result
 
 def filterWeather(weatherResult):
@@ -302,6 +303,66 @@ def printMountainDetailInfo(mountainName):
     print( "" )
 
 
+def getTimeIndex(timeHH):
+  result = int(timeHH / 3)
+  result = result % 8
+  return result
+
+def getTimeRangeFilter(climbRates, startTime, endTime):
+  startIndex = getTimeIndex(startTime)
+  endIndex = getTimeIndex(endTime)
+  if startIndex > endIndex:
+    startIndex, endIndex = endIndex, startIndex
+  #TODO: if it's climbrate, filter the climnRates
+  # climbRates = climbRates[startIndex:endIndex]
+  return climbRates
+
+def frontPaddingStr(str, length):
+  thePaddingLength = length - len(str)
+  return " "*thePaddingLength + str
+
+def dumpPerMountain(mountainWeathers, nonDispKeys):
+  for aMountain, theWeather in mountainWeathers.items():
+    print( aMountain + " : " )
+    for key, value in theWeather.items():
+      if not key in nonDispKeys:
+        theDispData = " ".join(map(str, value))
+        if key.startswith("登山") and not key.endswith("週間予報"):
+          theDispData = frontPaddingStr(theDispData, perKeyMaxLengths[getCategory(key)])
+        print( ljust_jp(key, 20) + ": " + theDispData )
+      else:
+        print( key.ljust(20) + ": " + str(value) )
+    printMountainDetailInfo( aMountain )
+
+
+def dumpPerCategory(mountainWeathers, nonDispKeys):
+  dispKeys = {}
+  for aMountain, theWeather in mountainWeathers.items():
+    for key, value in theWeather.items():
+      dispKeys[key] = True
+
+  # display per category data
+  for aDispKey in dispKeys.keys():
+      if not aDispKey in nonDispKeys:
+        print( aDispKey )
+        for aMountainName, theWeather in mountainWeathers.items():
+          if aDispKey in theWeather and not aDispKey in nonDispKeys:
+            theDispData = " ".join(map(str, theWeather[aDispKey]))
+            if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
+              theDispData = frontPaddingStr(theDispData, perKeyMaxLengths[getCategory(aDispKey)])
+            print( ljust_jp(aMountainName, 20) + ": " + theDispData )
+        print( "" )
+
+  # display detail information
+  for aDispKey in nonDispKeys:
+    print(aDispKey+":")
+    for aMountainName, theWeather in mountainWeathers.items():
+      if aDispKey in theWeather:
+        print( ljust_jp(aMountainName, 20) + ": " + str( theWeather[aDispKey] ) )
+        printMountainDetailInfo( aMountainName )
+    print( "" )
+
+
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
   parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
@@ -325,42 +386,6 @@ if __name__=="__main__":
   nonDispKeys = ["url", "score"]
 
   if False == args.compare:
-    for aMountain, theWeather in mountainWeathers.items():
-      print( aMountain + " : " )
-      for key, value in theWeather.items():
-        if not key in nonDispKeys:
-          thePaddingLength = 0
-          theDispData = " ".join(map(str, value))
-          if key.startswith("登山") and not key.endswith("週間予報"):
-            theCategoryKey = getCategory(key)
-            thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
-          print( ljust_jp(key, 20) + ": " + " "*thePaddingLength + theDispData )
-        else:
-          print( key.ljust(20) + ": " + str(value) )
-      printMountainDetailInfo( aMountain )
+    dumpPerMountain(mountainWeathers, nonDispKeys)
   else:
-    dispKeys = {}
-    for aMountain, theWeather in mountainWeathers.items():
-      for key, value in theWeather.items():
-        dispKeys[key] = True
-
-    for aDispKey in dispKeys.keys():
-        if not aDispKey in nonDispKeys:
-          print( aDispKey )
-          for aMountainName, theWeather in mountainWeathers.items():
-            if aDispKey in theWeather and not aDispKey in nonDispKeys:
-              theDispData = " ".join(map(str, theWeather[aDispKey]))
-              thePaddingLength = 0
-              if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
-                theCategoryKey = getCategory(aDispKey)
-                thePaddingLength = perKeyMaxLengths[theCategoryKey] - len(theDispData)
-              print( ljust_jp(aMountainName, 20) + ": " + " "*thePaddingLength + theDispData )
-          print( "" )
-
-    for aDispKey in nonDispKeys:
-      print(aDispKey+":")
-      for aMountainName, theWeather in mountainWeathers.items():
-        if aDispKey in theWeather:
-          print( ljust_jp(aMountainName, 20) + ": " + str( theWeather[aDispKey] ) )
-          printMountainDetailInfo( aMountainName )
-      print( "" )
+    dumpPerCategory(mountainWeathers, nonDispKeys)
