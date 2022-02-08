@@ -317,6 +317,75 @@ def getTimeRangeFilter(climbRates, startTime, endTime):
   # climbRates = climbRates[startIndex:endIndex]
   return climbRates
 
+def isClimbRate(climbData):
+  result = True
+
+  for aData in climbData:
+    if not (aData=="A" or aData=="B" or aData=="C"):
+      result = False
+      break
+
+  return result
+
+def getStandardizedKey(key):
+  result = key
+  pos = key.find(":")
+  if pos!=-1:
+    result = key[pos+1:len(key)]
+  if key.endswith("週間予報"):
+    result = "weekly"
+  return result
+
+def getHashArrayMaxLength(hashArrayData):
+  result = 0
+  for key, anArrayData in hashArrayData.items():
+    nLen = len(anArrayData)
+    if result < nLen:
+      result = nLen
+
+  print(str(result))
+
+  return result
+
+def getLengthEnsuredArrayWithFrontPadding(hashArrayData):
+  nEnsuredSize = getHashArrayMaxLength(hashArrayData)
+  result = {}
+  for key, anArrayData in hashArrayData.items():
+    nLen = len(anArrayData)
+    nFrontPadding = nEnsuredSize - nLen
+    theData = []
+    if nFrontPadding>0:
+      for i in range(nFrontPadding):
+        theData.append("")
+    theData.extend( anArrayData )
+    result[key] = theData
+  return result
+
+def getStandardizedMountainData(weatherData):
+  result = {}
+  result["climbRate"]={}
+  result["climbRate_weekly"]={}
+  result["weather"]={}
+  result["misc"]={}
+
+  for key, aData in weatherData.items():
+    rootKey = "weather"
+    if isClimbRate(aData):
+      rootKey = "climbRate"
+    key = getStandardizedKey(key)
+
+    if key=="weekly":
+      rootKey = "climbRate_weekly"
+    elif key=="url":
+      rootKey = "misc"
+    result[rootKey][key] = aData
+
+
+  result["climbRate"] = getLengthEnsuredArrayWithFrontPadding(result["climbRate"])
+  result["weather"] = getLengthEnsuredArrayWithFrontPadding(result["weather"])
+
+  return result
+
 def frontPaddingStr(str, length):
   thePaddingLength = length - len(str)
   return " "*thePaddingLength + str
@@ -324,6 +393,7 @@ def frontPaddingStr(str, length):
 def dumpPerMountain(mountainWeathers, nonDispKeys):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
+    stadndarizedData = getStandardizedMountainData(theWeather)
     for key, value in theWeather.items():
       if not key in nonDispKeys:
         theDispData = " ".join(map(str, value))
