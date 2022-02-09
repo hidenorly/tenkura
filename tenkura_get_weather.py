@@ -343,8 +343,6 @@ def getHashArrayMaxLength(hashArrayData):
     if result < nLen:
       result = nLen
 
-  print(str(result))
-
   return result
 
 def getLengthEnsuredArrayWithFrontPadding(hashArrayData):
@@ -390,18 +388,35 @@ def frontPaddingStr(str, length):
   thePaddingLength = length - len(str)
   return " "*thePaddingLength + str
 
+def printKeyArray(key, keyLength, arrayData, padding=" "):
+  key = ljust_jp(key, keyLength)
+  val = ""
+  for aData in arrayData:
+    if aData == "":
+      aData=padding
+    val = val + aData + padding
+  print( key + ": " + val )
+
 def dumpPerMountain(mountainWeathers, nonDispKeys):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
     stadndarizedData = getStandardizedMountainData(theWeather)
-    for key, value in theWeather.items():
-      if not key in nonDispKeys:
-        theDispData = " ".join(map(str, value))
-        if key.startswith("登山") and not key.endswith("週間予報"):
-          theDispData = frontPaddingStr(theDispData, perKeyMaxLengths[getCategory(key)])
-        print( ljust_jp(key, 20) + ": " + theDispData )
-      else:
-        print( key.ljust(20) + ": " + str(value) )
+
+    # print detail climb rate
+    for key, arrayData in stadndarizedData["climbRate"].items():
+      printKeyArray( key, 20, arrayData)
+
+    # print weekly climb rate
+    printKeyArray( "weekly", 20, stadndarizedData["climbRate_weekly"]["weekly"] )
+
+    # print detail weather rate
+    for key, arrayData in stadndarizedData["weather"].items():
+      printKeyArray( key, 20, arrayData)
+
+    # print misc.
+    printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "" )
+
+    # print mountain detail
     printMountainDetailInfo( aMountain )
 
 
