@@ -318,12 +318,14 @@ def getTimeRangeFilter(climbRates, startTime, endTime):
   return climbRates
 
 def isClimbRate(climbData):
-  result = True
+  result = False
 
-  for aData in climbData:
-    if not (aData=="A" or aData=="B" or aData=="C"):
-      result = False
-      break
+  if hasattr(climbData, "__iter__"):
+    result = True
+    for aData in climbData:
+      if not (aData=="A" or aData=="B" or aData=="C"):
+        result = False
+        break
 
   return result
 
@@ -338,10 +340,12 @@ def getStandardizedKey(key):
 
 def getHashArrayMaxLength(hashArrayData):
   result = 0
-  for key, anArrayData in hashArrayData.items():
-    nLen = len(anArrayData)
-    if result < nLen:
-      result = nLen
+  if hasattr(hashArrayData, "__iter__"):
+    for key, anArrayData in hashArrayData.items():
+      if hasattr(anArrayData, "__iter__"):
+        nLen = len(anArrayData)
+        if result < nLen:
+          result = nLen
 
   return result
 
@@ -349,14 +353,15 @@ def getLengthEnsuredArrayWithFrontPadding(hashArrayData):
   nEnsuredSize = getHashArrayMaxLength(hashArrayData)
   result = {}
   for key, anArrayData in hashArrayData.items():
-    nLen = len(anArrayData)
-    nFrontPadding = nEnsuredSize - nLen
-    theData = []
-    if nFrontPadding>0:
-      for i in range(nFrontPadding):
-        theData.append("")
-    theData.extend( anArrayData )
-    result[key] = theData
+    if hasattr(anArrayData, "__iter__"):
+      nLen = len(anArrayData)
+      nFrontPadding = nEnsuredSize - nLen
+      theData = []
+      if nFrontPadding>0:
+        for i in range(nFrontPadding):
+          theData.append("")
+      theData.extend( anArrayData )
+      result[key] = theData
   return result
 
 def getStandardizedMountainData(weatherData):
@@ -422,23 +427,31 @@ def dumpPerMountain(mountainWeathers, nonDispKeys):
 
 def dumpPerCategory(mountainWeathers, nonDispKeys):
   dispKeys = {}
+  dispCategory = {}
+  standarizedData = {}
   for aMountain, theWeather in mountainWeathers.items():
-    for key, value in theWeather.items():
-      dispKeys[key] = True
+    standarizedData[aMountain] = getStandardizedMountainData(theWeather)
+    for key, value in standarizedData[aMountain].items():
+      dispCategory[key] = True
+      for key2, value2 in value.items():
+        dispKeys[key2] = True
+
 
   # display per category data
-  for aDispKey in dispKeys.keys():
-      if not aDispKey in nonDispKeys:
-        print( aDispKey )
-        for aMountainName, theWeather in mountainWeathers.items():
-          if aDispKey in theWeather and not aDispKey in nonDispKeys:
-            theDispData = " ".join(map(str, theWeather[aDispKey]))
-            if aDispKey.startswith("登山") and not aDispKey.endswith("週間予報"):
-              theDispData = frontPaddingStr(theDispData, perKeyMaxLengths[getCategory(aDispKey)])
-            print( ljust_jp(aMountainName, 20) + ": " + theDispData )
-        print( "" )
+  for aCategoryKey in dispCategory.keys():
+    for aDispKey in dispKeys.keys():
+        if not aDispKey in nonDispKeys:
+          found = False
+          for aMountainName, aStandarizedData in standarizedData.items():
+            if (aCategoryKey in aStandarizedData) and (aDispKey in aStandarizedData[aCategoryKey]):# and not (aDispKey in nonDispKeys):
+              if found == False:
+                print( "" )
+                print( aCategoryKey + ":" + aDispKey )
+                found = True
+              printKeyArray( aMountainName, 20, aStandarizedData[aCategoryKey][aDispKey])
 
   # display detail information
+  print( "" )
   for aDispKey in nonDispKeys:
     print(aDispKey+":")
     for aMountainName, theWeather in mountainWeathers.items():
