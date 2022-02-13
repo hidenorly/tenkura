@@ -305,7 +305,7 @@ def printMountainDetailInfo(mountainName):
 
 def getTimeIndex(timeHH):
   result = int(timeHH / 3)
-  result = result % 8
+  result = result % 9
   return result
 
 def getTimeRangeFilter(climbRates, startTime, endTime):
@@ -313,9 +313,21 @@ def getTimeRangeFilter(climbRates, startTime, endTime):
   endIndex = getTimeIndex(endTime)
   if startIndex > endIndex:
     startIndex, endIndex = endIndex, startIndex
-  #TODO: if it's climbrate, filter the climnRates
-  # climbRates = climbRates[startIndex:endIndex]
+  if len(climbRates) == 8:
+    climbRates = climbRates[startIndex:endIndex]
   return climbRates
+
+def getTimeRange(timeRange):
+  startTime = 0
+  endtime = 24
+  pos = timeRange.find("-")
+  if pos!=-1:
+    startTime = int( timeRange[0:pos] )
+    endTime = int( timeRange[pos+1:len(timeRange)] )
+  else:
+    startTime = int( int(timeRange) / 3 ) * 3
+    endTime = startTime + 2
+  return startTime, endTime
 
 def isClimbRate(climbData):
   result = False
@@ -402,13 +414,14 @@ def printKeyArray(key, keyLength, arrayData, padding=" "):
     val = val + aData + padding
   print( key + ": " + val )
 
-def dumpPerMountain(mountainWeathers, nonDispKeys):
+def dumpPerMountain(mountainWeathers, nonDispKeys, startTime, endTime):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
     stadndarizedData = getStandardizedMountainData(theWeather)
 
     # print detail climb rate
     for key, arrayData in stadndarizedData["climbRate"].items():
+      arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
       printKeyArray( key, 20, arrayData)
 
     # print weekly climb rate
@@ -425,7 +438,7 @@ def dumpPerMountain(mountainWeathers, nonDispKeys):
     printMountainDetailInfo( aMountain )
 
 
-def dumpPerCategory(mountainWeathers, nonDispKeys):
+def dumpPerCategory(mountainWeathers, nonDispKeys, startTime, endTime):
   dispKeys = {}
   dispCategory = {}
   standarizedData = {}
@@ -448,7 +461,10 @@ def dumpPerCategory(mountainWeathers, nonDispKeys):
                 print( "" )
                 print( aCategoryKey + ":" + aDispKey )
                 found = True
-              printKeyArray( aMountainName, 20, aStandarizedData[aCategoryKey][aDispKey])
+              arrayData = aStandarizedData[aCategoryKey][aDispKey]
+              if aCategoryKey == "climbRate" or aCategoryKey == "weather":
+                arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
+              printKeyArray( aMountainName, 20, arrayData )
 
   # display detail information
   print( "" )
@@ -466,6 +482,8 @@ if __name__=="__main__":
   parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
   parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
+  parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
+
   args = parser.parse_args()
 
   if len(args.args) == 0:
@@ -482,8 +500,9 @@ if __name__=="__main__":
 
   perKeyMaxLengths = get_max_length_per_category(mountainWeathers)
   nonDispKeys = ["url", "score"]
+  startTime, endTime = getTimeRange( args.time )
 
   if False == args.compare:
-    dumpPerMountain(mountainWeathers, nonDispKeys)
+    dumpPerMountain(mountainWeathers, nonDispKeys, startTime, endTime)
   else:
-    dumpPerCategory(mountainWeathers, nonDispKeys)
+    dumpPerCategory(mountainWeathers, nonDispKeys, startTime, endTime)
