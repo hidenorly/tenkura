@@ -414,22 +414,33 @@ def printKeyArray(key, keyLength, arrayData, padding=" "):
     val = val + aData + padding
   print( key + ": " + val )
 
-def dumpPerMountain(mountainWeathers, nonDispKeys, startTime, endTime):
+def isMatchedDate(key, targetDate):
+  result = False
+  pos = key.find( targetDate )
+  if pos!=-1 or targetDate=="":
+    result = True
+  return result
+
+
+def dumpPerMountain(mountainWeathers, nonDispKeys, targetDate, startTime, endTime):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
     stadndarizedData = getStandardizedMountainData(theWeather)
 
     # print detail climb rate
     for key, arrayData in stadndarizedData["climbRate"].items():
-      arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-      printKeyArray( key, 20, arrayData)
+      if isMatchedDate( key, targetDate):
+        arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
+        printKeyArray( key, 20, arrayData)
 
     # print weekly climb rate
     printKeyArray( "weekly", 20, stadndarizedData["climbRate_weekly"]["weekly"] )
 
     # print detail weather rate
     for key, arrayData in stadndarizedData["weather"].items():
-      printKeyArray( key, 20, arrayData)
+      if isMatchedDate( key, targetDate):
+        arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
+        printKeyArray( key, 20, arrayData)
 
     # print misc.
     printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "" )
@@ -437,8 +448,9 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, startTime, endTime):
     # print mountain detail
     printMountainDetailInfo( aMountain )
 
+    print("")
 
-def dumpPerCategory(mountainWeathers, nonDispKeys, startTime, endTime):
+def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTime):
   dispKeys = {}
   dispCategory = {}
   standarizedData = {}
@@ -457,14 +469,15 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, startTime, endTime):
           found = False
           for aMountainName, aStandarizedData in standarizedData.items():
             if (aCategoryKey in aStandarizedData) and (aDispKey in aStandarizedData[aCategoryKey]):# and not (aDispKey in nonDispKeys):
-              if found == False:
-                print( "" )
-                print( aCategoryKey + ":" + aDispKey )
-                found = True
-              arrayData = aStandarizedData[aCategoryKey][aDispKey]
-              if aCategoryKey == "climbRate" or aCategoryKey == "weather":
-                arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-              printKeyArray( aMountainName, 20, arrayData )
+              if isMatchedDate( aDispKey, targetDate):
+                if found == False:
+                  print( "" )
+                  print( aCategoryKey + ":" + aDispKey )
+                  found = True
+                arrayData = aStandarizedData[aCategoryKey][aDispKey]
+                if aCategoryKey == "climbRate" or aCategoryKey == "weather":
+                  arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
+                printKeyArray( aMountainName, 20, arrayData )
 
   # display detail information
   print( "" )
@@ -483,6 +496,7 @@ if __name__=="__main__":
   parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
+  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14')
 
   args = parser.parse_args()
 
@@ -503,6 +517,6 @@ if __name__=="__main__":
   startTime, endTime = getTimeRange( args.time )
 
   if False == args.compare:
-    dumpPerMountain(mountainWeathers, nonDispKeys, startTime, endTime)
+    dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime)
   else:
-    dumpPerCategory(mountainWeathers, nonDispKeys, startTime, endTime)
+    dumpPerCategory(mountainWeathers, nonDispKeys, args.date, startTime, endTime)
