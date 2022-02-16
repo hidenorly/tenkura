@@ -405,14 +405,14 @@ def frontPaddingStr(str, length):
   thePaddingLength = length - len(str)
   return " "*thePaddingLength + str
 
-def printKeyArray(key, keyLength, arrayData, padding=" "):
-  key = ljust_jp(key, keyLength)
+def printKeyArray(key, keyLength, arrayData, padding=" ", lPadding=""):
+  key = ljust_jp(key, keyLength-len(lPadding))
   val = ""
   for aData in arrayData:
     if aData == "":
       aData=padding
     val = val + aData + padding
-  print( key + ": " + val )
+  print( lPadding + key + ": " + val )
 
 def isMatchedDate(key, targetDate):
   result = False
@@ -421,7 +421,6 @@ def isMatchedDate(key, targetDate):
     result = True
   return result
 
-
 def dumpPerMountain(mountainWeathers, nonDispKeys, targetDate, startTime, endTime):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
@@ -429,21 +428,21 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
 
     # print detail climb rate
     for key, arrayData in stadndarizedData["climbRate"].items():
-      if isMatchedDate( key, targetDate):
+      if isMatchedDate( key, targetDate ):
         arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-        printKeyArray( key, 20, arrayData)
+        printKeyArray( key, 20, arrayData, lPadding=" ")
 
     # print weekly climb rate
-    printKeyArray( "weekly", 20, stadndarizedData["climbRate_weekly"]["weekly"] )
+    printKeyArray( "weekly", 20, stadndarizedData["climbRate_weekly"]["weekly"], lPadding=" ")
 
     # print detail weather rate
     for key, arrayData in stadndarizedData["weather"].items():
-      if isMatchedDate( key, targetDate):
+      if isMatchedDate( key, targetDate ):
         arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-        printKeyArray( key, 20, arrayData)
+        printKeyArray( key, 20, arrayData, lPadding=" ")
 
     # print misc.
-    printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "" )
+    printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "", lPadding=" " )
 
     # print mountain detail
     printMountainDetailInfo( aMountain )
@@ -469,7 +468,7 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
           found = False
           for aMountainName, aStandarizedData in standarizedData.items():
             if (aCategoryKey in aStandarizedData) and (aDispKey in aStandarizedData[aCategoryKey]):# and not (aDispKey in nonDispKeys):
-              if isMatchedDate( aDispKey, targetDate):
+              if isMatchedDate( aDispKey, targetDate ):
                 if found == False:
                   print( "" )
                   print( aCategoryKey + ":" + aDispKey )
@@ -477,7 +476,7 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
                 arrayData = aStandarizedData[aCategoryKey][aDispKey]
                 if aCategoryKey == "climbRate" or aCategoryKey == "weather":
                   arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-                printKeyArray( aMountainName, 20, arrayData )
+                printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
 
   # display detail information
   print( "" )
