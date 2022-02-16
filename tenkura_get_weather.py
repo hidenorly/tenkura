@@ -16,7 +16,10 @@ import sys
 import requests
 import argparse
 import unicodedata
+import datetime
+
 from bs4 import BeautifulSoup
+
 import mountainDic
 import mountainInfoDic
 
@@ -414,30 +417,91 @@ def printKeyArray(key, keyLength, arrayData, padding=" ", lPadding=""):
     val = val + aData + padding
   print( lPadding + key + ": " + val )
 
-def isMatchedDate(key, targetDate):
-  result = False
-  pos = key.find( targetDate )
-  if pos!=-1 or targetDate=="":
-    result = True
+def getDate(key):
+  month = ""
+  day = ""
+
+  pos = key.find("/")
+  if pos!=-1:
+    month = key[0:pos]
+
+    pos2 = key.find("(")
+    if pos2!=-1:
+     day = key[pos+1:pos2]
+    else:
+     day = key[pos+1:len(key)]
+
+  return month, day
+
+def getDateScore(key):
+  result = 0
+  month, day = getDate( key )
+  if month!="" and day!="":
+    result = int( month ) * 31 + int( day )
   return result
 
-def dumpPerMountain(mountainWeathers, nonDispKeys, targetDate, startTime, endTime):
+def isMatchedDate(key, targetDateMMDD):
+  result = False
+#  pos = key.find( targetDateMMDD )
+#  if pos!=-1 or targetDateMMDD=="":
+#    result = True
+  if targetDateMMDD=="" or getDateScore(key) == getDateScore(targetDateMMDD):
+    result = True
+
+  return result
+
+def getMaxDateMMDD(climbRates):
+  result = ""
+  score = 0
+  for key, arrayData in climbRates.items():
+    currentScore = getDateScore(key)
+    if currentScore > score:
+      score = currentScore
+      month, day = getDate( key )
+      result = month + "/" + day
+  return result
+
+def getDateTimeFromMMDD(mmdd):
+  thisYear = datetime.datetime.now().strftime("%Y")
+  return datetime.datetime.strptime(thisYear + "/" + mmdd, "%Y/%m/%d")
+
+def getDateRangeFilterForWeek(weeklyArrayData, startDateTime, targetDateTime):
+  result = []
+  currentDateTime = startDateTime
+  for aData in weeklyArrayData:
+    if currentDateTime == targetDateTime:
+      result.append( aData )
+    currentDateTime = currentDateTime + datetime.timedelta(days=1)
+
+  return result
+
+def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime):
   for aMountain, theWeather in mountainWeathers.items():
     print( aMountain + " : " )
     stadndarizedData = getStandardizedMountainData(theWeather)
 
     # print detail climb rate
+    found = False
     for key, arrayData in stadndarizedData["climbRate"].items():
-      if isMatchedDate( key, targetDate ):
+      if isMatchedDate( key, targetDateMMDD ):
         arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
         printKeyArray( key, 20, arrayData, lPadding=" ")
+        found = True
 
     # print weekly climb rate
-    printKeyArray( "weekly", 20, stadndarizedData["climbRate_weekly"]["weekly"], lPadding=" ")
+    climbRateDayMax = getMaxDateMMDD( stadndarizedData["climbRate"] )
+    climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
+    weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
+
+    weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
+    if targetDateMMDD!="":
+      weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
+    if len( weeklyData )!=0:
+      printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
 
     # print detail weather rate
     for key, arrayData in stadndarizedData["weather"].items():
-      if isMatchedDate( key, targetDate ):
+      if isMatchedDate( key, targetDateMMDD ):
         arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
         printKeyArray( key, 20, arrayData, lPadding=" ")
 
@@ -449,7 +513,7 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
 
     print("")
 
-def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTime):
+def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime):
   dispKeys = {}
   dispCategory = {}
   standarizedData = {}
@@ -460,7 +524,6 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
       for key2, value2 in value.items():
         dispKeys[key2] = True
 
-
   # display per category data
   for aCategoryKey in dispCategory.keys():
     for aDispKey in dispKeys.keys():
@@ -468,7 +531,7 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDate, startTime, endTim
           found = False
           for aMountainName, aStandarizedData in standarizedData.items():
             if (aCategoryKey in aStandarizedData) and (aDispKey in aStandarizedData[aCategoryKey]):# and not (aDispKey in nonDispKeys):
-              if isMatchedDate( aDispKey, targetDate ):
+              if isMatchedDate( aDispKey, targetDateMMDD ):
                 if found == False:
                   print( "" )
                   print( aCategoryKey + ":" + aDispKey )
