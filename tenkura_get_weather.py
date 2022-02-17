@@ -384,6 +384,7 @@ def getStandardizedMountainData(weatherData):
   result["climbRate"]={}
   result["climbRate_weekly"]={}
   result["weather"]={}
+  result["weather_weekly"]={}
   result["misc"]={}
 
   for key, aData in weatherData.items():
@@ -393,7 +394,10 @@ def getStandardizedMountainData(weatherData):
     key = getStandardizedKey(key)
 
     if key=="weekly":
-      rootKey = "climbRate_weekly"
+      if isClimbRate(aData):
+        rootKey = "climbRate_weekly"
+      else:
+        rootKey = "weather_weekly"
     elif key=="url":
       rootKey = "misc"
     result[rootKey][key] = aData
@@ -433,10 +437,20 @@ def getDate(key):
 
   return month, day
 
+def isRobustNumeric(data):
+  if data is not None:
+    try:
+      float(data)
+    except ValueError:
+      return False
+    return True
+  else:
+    return False
+
 def getDateScore(key):
   result = 0
   month, day = getDate( key )
-  if month!="" and day!="":
+  if month!="" and day!="" and isRobustNumeric(month) and isRobustNumeric(day):
     result = int( month ) * 31 + int( day )
   return result
 
@@ -462,6 +476,8 @@ def getMaxDateMMDD(climbRates):
   return result
 
 def getDateTimeFromMMDD(mmdd):
+  if mmdd=="":
+    mmdd="1/1"
   thisYear = datetime.datetime.now().strftime("%Y")
   return datetime.datetime.strptime(thisYear + "/" + mmdd, "%Y/%m/%d")
 
@@ -490,14 +506,16 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
 
     # print weekly climb rate
     climbRateDayMax = getMaxDateMMDD( stadndarizedData["climbRate"] )
-    climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
-    weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
+    if climbRateDayMax!="":
+      climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
+      weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
 
-    weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
-    if targetDateMMDD!="":
-      weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
-    if len( weeklyData )!=0:
-      printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
+      if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
+        weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
+        if targetDateMMDD!="":
+          weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
+        if len( weeklyData )!=0:
+          printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
 
     # print detail weather rate
     for key, arrayData in stadndarizedData["weather"].items():
@@ -525,6 +543,7 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
         dispKeys[key2] = True
 
   # display per category data
+  foundData = False
   for aCategoryKey in dispCategory.keys():
     for aDispKey in dispKeys.keys():
         if not aDispKey in nonDispKeys:
@@ -538,8 +557,29 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
                   found = True
                 arrayData = aStandarizedData[aCategoryKey][aDispKey]
                 if aCategoryKey == "climbRate" or aCategoryKey == "weather":
-                  arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
+                  if isMatchedDate( aDispKey, targetDateMMDD ):
+                    arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
                 printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
+                foundData = True
+
+  # fallback
+  if foundData==False:
+    weekStart_dateTime = None
+    for aMountainName, aStandarizedData in standarizedData.items():
+      climbRateDayMax = getMaxDateMMDD( aStandarizedData["climbRate"] )
+      if climbRateDayMax!="":
+        climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
+        weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
+        break
+
+    if weekStart_dateTime!=None:
+      for aMountainName, aStandarizedData in standarizedData.items():
+        if ( "climbRate_weekly" in aStandarizedData ) and ( "weekly" in aStandarizedData["climbRate_weekly"] ):
+          weeklyData = aStandarizedData["climbRate_weekly"]["weekly"]
+          if targetDateMMDD!="":
+            weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
+          if len( weeklyData )!=0:
+            printKeyArray( aMountainName, 20, weeklyData, lPadding=" ")
 
   # display detail information
   print( "" )
