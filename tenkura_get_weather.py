@@ -17,6 +17,9 @@ import requests
 import argparse
 import unicodedata
 import datetime
+import csv
+import itertools
+import os
 
 from bs4 import BeautifulSoup
 
@@ -591,6 +594,41 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
         printMountainDetailInfo( aMountainName )
     print( "" )
 
+def openCsv( fileName, delimiter="," ):
+  result = []
+  if os.path.exists( fileName ):
+    file = open( fileName )
+    if file:
+      reader = csv.reader(file, quoting=csv.QUOTE_MINIMAL, delimiter=delimiter)
+      for aRow in reader:
+        data = []
+        for aCol in aRow:
+          aCol = aCol.strip()
+          if aCol.startswith("\""):
+            aCol = aCol[1:len(aCol)]
+          if aCol.endswith("\""):
+            aCol = aCol[0:len(aCol)-1]
+          data.append( aCol )
+        result.append( data )
+  return result
+
+def isMatchedMountainRobust(arrayData, search):
+  result = False
+  for aData in arrayData:
+    if aData.find(search)!=-1 or search.find(aData)!=-1:
+      result = True
+      break
+  return result
+
+
+def mountainsExcludeFromFile( mountains, excludeFile ):
+  result = []
+  excludes = list( itertools.chain.from_iterable( openCsv( excludeFile ) ) )
+  for aMountain in mountains:
+    if not isMatchedMountainRobust( excludes, aMountain ):
+      result.append( aMountain )
+  return result
+
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
@@ -599,6 +637,7 @@ if __name__=="__main__":
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14')
+  parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
 
   args = parser.parse_args()
 
@@ -606,7 +645,7 @@ if __name__=="__main__":
     parser.print_help()
     exit(-1)
 
-  mountains = args.args
+  mountains = mountainsExcludeFromFile( args.args, args.exclude )
 
   mountainWeathers={}
   for aMountain in mountains:
