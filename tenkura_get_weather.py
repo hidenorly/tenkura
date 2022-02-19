@@ -621,9 +621,12 @@ def isMatchedMountainRobust(arrayData, search):
   return result
 
 
-def mountainsExcludeFromFile( mountains, excludeFile ):
+def mountainsIncludeExcludeFromFile( mountains, excludeFile, includeFile ):
   result = []
   excludes = list( itertools.chain.from_iterable( openCsv( excludeFile ) ) )
+  includes = list( itertools.chain.from_iterable( openCsv( includeFile ) ) )
+  for aMountain in includes:
+    mountains.append( aMountain )
   for aMountain in mountains:
     if not isMatchedMountainRobust( excludes, aMountain ):
       result.append( aMountain )
@@ -638,14 +641,16 @@ if __name__=="__main__":
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14')
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
+  parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
 
   args = parser.parse_args()
 
-  if len(args.args) == 0:
+  mountains = mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
+  mountains = set( mountains )
+
+  if len(mountains) == 0:
     parser.print_help()
     exit(-1)
-
-  mountains = mountainsExcludeFromFile( args.args, args.exclude )
 
   mountainWeathers={}
   for aMountain in mountains:
