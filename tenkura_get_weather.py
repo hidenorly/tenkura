@@ -509,7 +509,8 @@ def isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
 
   return result
 
-def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates):
+def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates, disablePrint):
+  result = set()
   for aMountain, theWeather in mountainWeathers.items():
     stadndarizedData = getStandardizedMountainData(theWeather)
 
@@ -520,9 +521,12 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
         arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
         if isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
           if not found:
-            print( aMountain + " : " )
             found = True
-          printKeyArray( key, 20, arrayData, lPadding=" ")
+            if not disablePrint:
+              print( aMountain + " : " )
+          if not disablePrint:
+            printKeyArray( key, 20, arrayData, lPadding=" ")
+          result.add( aMountain )
 
     # print weekly climb rate
     climbRateDayMax = getMaxDateMMDD( stadndarizedData["climbRate"] )
@@ -537,11 +541,14 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
         if len( weeklyData )!=0:
           if isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
             if not found:
-              print( aMountain + " : " )
+              if not disablePrint:
+                print( aMountain + " : " )
               found = True
-            printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
+            if not disablePrint:
+              printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
+            result.add( aMountain )
 
-    if found:
+    if found and not disablePrint:
       # print detail weather rate
       for key, arrayData in stadndarizedData["weather"].items():
         if isMatchedDate( key, targetDateMMDD ):
@@ -555,6 +562,8 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
       printMountainDetailInfo( aMountain )
 
       print("")
+
+  return result
 
 def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates):
   dispKeys = {}
@@ -590,7 +599,8 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
                     print( aCategoryKey + ":" + aDispKey )
                     found = True
                   printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
-                  displayedMountains[aMountainName] = True
+                  if isClimbRate( arrayData ):
+                    displayedMountains[aMountainName] = True
                   foundData = True
 
   # fallback
@@ -615,7 +625,8 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
                 print( "climbRate_weekly:"+targetDateMMDD )
                 foundData = True
               printKeyArray( aMountainName, 20, weeklyData, lPadding=" ")
-              displayedMountains[aMountainName] = True
+              if isClimbRate( weeklyData ):
+                displayedMountains[aMountainName] = True
 
   if foundData:
     # display detail information
@@ -678,6 +689,7 @@ if __name__=="__main__":
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
+  parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
 
   args = parser.parse_args()
 
@@ -698,7 +710,11 @@ if __name__=="__main__":
   nonDispKeys = ["url", "score"]
   startTime, endTime = getTimeRange( args.time )
 
-  if False == args.compare:
-    dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates )
+  if False == args.compare or args.noDetails:
+    mountains = dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates, args.noDetails )
+    if args.noDetails:
+      for aMountain in mountains:
+        print( aMountain, end = " " )
+      print( "" )
   else:
     dumpPerCategory(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates )
