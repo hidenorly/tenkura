@@ -123,6 +123,20 @@ def getWeatherScore(url):
 
   return result
 
+def getAcceptableWeatherConditions(excludingWeathers):
+  result = {}
+
+  for anId, aWeather in weatherStatusDic.items():
+    isOk = True
+    for anExclude in excludingWeathers:
+      if anExclude.find( aWeather )!=-1 or aWeather.find( anExclude )!=-1:
+        isOk = False
+        break
+    result[ aWeather ] = isOk
+
+  return result
+
+
 def getFormatedKeyString(text):
   result = text
   result = result.replace("週　間　予　報", "週間予報")
@@ -509,51 +523,89 @@ def isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
 
   return result
 
-def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates, disablePrint):
+def isAcceptableWeatherConditions( arrayData, acceptableWeatherConditions ):
+  result = True
+  for aData in arrayData:
+    result = acceptableWeatherConditions[ aData.strip() ]
+    if result == False:
+      break
+
+  return result
+
+
+def getFilteredMountainInfo(stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions):
+  result = {}
+  result["climbRate"] = {}
+  result["climbRate_weekly"] = {}
+  result["weather"] = {}
+  result["weather_weekly"] = {}
+  result["misc"] = stadndarizedData["misc"]
+
+  found = False
+  # per day : climb rate & weather rate
+  for key, climbData in stadndarizedData["climbRate"].items():
+    if isMatchedDate( key, targetDateMMDD ):
+      climbData = getTimeRangeFilter( climbData, startTime, endTime )
+      if isAcceptableClimbRateRange( climbData, acceptableClimbRates ):
+        found = True
+        if key in stadndarizedData["weather"]:
+          weatherData = stadndarizedData["weather"][key]
+          weatherData = getTimeRangeFilter( weatherData, startTime, endTime )
+          if isAcceptableWeatherConditions( weatherData, acceptableWeatherConditions ):
+            result["weather"][key] = weatherData
+            result["climbRate"][key] = climbData
+
+  # weekly climb rate
+  climbRateDayMax = getMaxDateMMDD( stadndarizedData["climbRate"] )
+  if climbRateDayMax!="":
+    climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
+    weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
+
+    if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
+      weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
+      if targetDateMMDD!="":
+        weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
+      if len( weeklyData )!=0:
+        if isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
+          result["climbRate_weekly"]["weekly"] = weeklyData
+          found = True
+
+  return result
+
+
+def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions, disablePrint):
   result = set()
+
   for aMountain, theWeather in mountainWeathers.items():
     stadndarizedData = getStandardizedMountainData(theWeather)
+    stadndarizedData = getFilteredMountainInfo( stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions )
 
     # print detail climb rate
     found = False
     for key, arrayData in stadndarizedData["climbRate"].items():
-      if isMatchedDate( key, targetDateMMDD ):
-        arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-        if isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
-          if not found:
-            found = True
-            if not disablePrint:
-              print( aMountain + " : " )
-          if not disablePrint:
-            printKeyArray( key, 20, arrayData, lPadding=" ")
-          result.add( aMountain )
+      if not found:
+        found = True
+        if not disablePrint:
+          print( aMountain + " : " )
+      if not disablePrint:
+        printKeyArray( key, 20, arrayData, lPadding=" ")
+      result.add( aMountain )
 
     # print weekly climb rate
-    climbRateDayMax = getMaxDateMMDD( stadndarizedData["climbRate"] )
-    if climbRateDayMax!="":
-      climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
-      weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
-
-      if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
-        weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
-        if targetDateMMDD!="":
-          weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
-        if len( weeklyData )!=0:
-          if isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
-            if not found:
-              if not disablePrint:
-                print( aMountain + " : " )
-              found = True
-            if not disablePrint:
-              printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
-            result.add( aMountain )
+    if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
+      weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
+      if not found:
+        if not disablePrint:
+          print( aMountain + " : " )
+        found = True
+      if not disablePrint:
+        printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
+      result.add( aMountain )
 
     if found and not disablePrint:
       # print detail weather rate
       for key, arrayData in stadndarizedData["weather"].items():
-        if isMatchedDate( key, targetDateMMDD ):
-          arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-          printKeyArray( key, 20, arrayData, lPadding=" ")
+        printKeyArray( key, 20, arrayData, lPadding=" ")
 
       # print misc.
       printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "", lPadding=" " )
@@ -564,6 +616,8 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
       print("")
 
   return result
+
+
 
 def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates):
   dispKeys = {}
@@ -689,12 +743,14 @@ if __name__=="__main__":
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
+  parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='rain,thunder', help='specify excluding weather conditions default:rain,thunder')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
 
   args = parser.parse_args()
 
   mountains = mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
   mountains = set( mountains )
+  acceptableWeatherConditions = getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
   if len(mountains) == 0:
     parser.print_help()
@@ -711,7 +767,7 @@ if __name__=="__main__":
   startTime, endTime = getTimeRange( args.time )
 
   if False == args.compare or args.noDetails:
-    mountains = dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates, args.noDetails )
+    mountains = dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions, args.noDetails )
     if args.noDetails:
       for aMountain in mountains:
         print( aMountain, end = " " )
