@@ -624,7 +624,8 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
   dispCategory = {}
   standarizedData = {}
   for aMountain, theWeather in mountainWeathers.items():
-    standarizedData[aMountain] = getStandardizedMountainData(theWeather)
+    stadndarizedData = getStandardizedMountainData(theWeather)
+    standarizedData[aMountain] = getFilteredMountainInfo( stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions )
     for key, value in standarizedData[aMountain].items():
       dispCategory[key] = True
       for key2, value2 in value.items():
@@ -640,47 +641,26 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
           found = False
           for aMountainName, aStandarizedData in standarizedData.items():
             if (aCategoryKey in aStandarizedData) and (aDispKey in aStandarizedData[aCategoryKey]):# and not (aDispKey in nonDispKeys):
-              if isMatchedDate( aDispKey, targetDateMMDD ):
-                arrayData = aStandarizedData[aCategoryKey][aDispKey]
-                if aCategoryKey == "climbRate" or aCategoryKey == "weather":
-                  if isMatchedDate( aDispKey, targetDateMMDD ):
-                    arrayData = getTimeRangeFilter( arrayData, startTime, endTime )
-                if ( isClimbRate( arrayData ) and not isAcceptableClimbRateRange( arrayData, acceptableClimbRates ) ):
-                  continue
-                else:
-                  if found == False:
-                    print( "" )
-                    print( aCategoryKey + ":" + aDispKey )
-                    found = True
-                  printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
-                  if isClimbRate( arrayData ):
-                    displayedMountains[aMountainName] = True
-                  foundData = True
+              arrayData = aStandarizedData[aCategoryKey][aDispKey]
+              if found == False:
+                print( "" )
+                print( aCategoryKey + ":" + aDispKey )
+                found = True
+              printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
+              displayedMountains[aMountainName] = True
+              foundData = True
 
   # fallback
   if foundData==False:
-    weekStart_dateTime = None
     for aMountainName, aStandarizedData in standarizedData.items():
-      climbRateDayMax = getMaxDateMMDD( aStandarizedData["climbRate"] )
-      if climbRateDayMax!="":
-        climbRateDayMax_dateTime = getDateTimeFromMMDD( climbRateDayMax )
-        weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
-        break
-
-    if weekStart_dateTime!=None:
-      for aMountainName, aStandarizedData in standarizedData.items():
-        if ( "climbRate_weekly" in aStandarizedData ) and ( "weekly" in aStandarizedData["climbRate_weekly"] ):
-          weeklyData = aStandarizedData["climbRate_weekly"]["weekly"]
-          if targetDateMMDD!="":
-            weeklyData = getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, getDateTimeFromMMDD(targetDateMMDD) )
-          if len( weeklyData )!=0:
-            if isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
-              if foundData == False:
-                print( "climbRate_weekly:"+targetDateMMDD )
-                foundData = True
-              printKeyArray( aMountainName, 20, weeklyData, lPadding=" ")
-              if isClimbRate( weeklyData ):
-                displayedMountains[aMountainName] = True
+      if ( "climbRate_weekly" in aStandarizedData ) and ( "weekly" in aStandarizedData["climbRate_weekly"] ):
+        weeklyData = aStandarizedData["climbRate_weekly"]["weekly"]
+        if len( weeklyData )!=0:
+          if foundData == False:
+            print( "climbRate_weekly:"+targetDateMMDD )
+            foundData = True
+          printKeyArray( aMountainName, 20, weeklyData, lPadding=" ")
+          displayedMountains[aMountainName] = True
 
   if foundData:
     # display detail information
