@@ -417,6 +417,8 @@ def getStandardizedMountainData(weatherData):
         rootKey = "weather_weekly"
     elif key=="url":
       rootKey = "misc"
+    elif key=="score":
+      rootKey = "misc"
     result[rootKey][key] = aData
 
 
@@ -573,13 +575,10 @@ def getFilteredMountainInfo(stadndarizedData, targetDateMMDD, startTime, endTime
   return result
 
 
-def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions, disablePrint):
+def dumpPerMountain(mountainWeathers, disablePrint):
   result = set()
 
-  for aMountain, theWeather in mountainWeathers.items():
-    stadndarizedData = getStandardizedMountainData(theWeather)
-    stadndarizedData = getFilteredMountainInfo( stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions )
-
+  for aMountain, stadndarizedData in mountainWeathers.items():
     # print detail climb rate
     found = False
     for key, arrayData in stadndarizedData["climbRate"].items():
@@ -608,7 +607,11 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
         printKeyArray( key, 20, arrayData, lPadding=" ")
 
       # print misc.
-      printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "", lPadding=" " )
+      if "misc" in stadndarizedData:
+        if "url" in stadndarizedData["misc"]:
+          printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "", lPadding=" " )
+        if "score" in stadndarizedData["misc"]:
+          print( ljust_jp(" score", 20) + ": " + str(stadndarizedData["misc"]["score"]) )
 
       # print mountain detail
       printMountainDetailInfo( aMountain )
@@ -617,16 +620,11 @@ def dumpPerMountain(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
 
   return result
 
-
-
-def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, endTime, acceptableClimbRates):
+def dumpPerCategory(standarizedData, nonDispKeys):
   dispKeys = {}
   dispCategory = {}
-  standarizedData = {}
-  for aMountain, theWeather in mountainWeathers.items():
-    stadndarizedData = getStandardizedMountainData(theWeather)
-    standarizedData[aMountain] = getFilteredMountainInfo( stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions )
-    for key, value in standarizedData[aMountain].items():
+  for aMountain, aStadndarizedData in standarizedData.items():
+    for key, value in aStadndarizedData.items():
       dispCategory[key] = True
       for key2, value2 in value.items():
         dispKeys[key2] = True
@@ -669,10 +667,15 @@ def dumpPerCategory(mountainWeathers, nonDispKeys, targetDateMMDD, startTime, en
       print(aDispKey+":")
       for aMountainName, flag in displayedMountains.items():
         theWeather = mountainWeathers[aMountainName]
+        if "misc" in theWeather:
+          theWeather = theWeather["misc"]
         if aDispKey in theWeather:
-          print( ljust_jp(aMountainName, 20) + ": " + str( theWeather[aDispKey] ) )
+          print( " " + ljust_jp(aMountainName, 19) + ": " + str( theWeather[aDispKey] ) )
+        if aDispKey == "url":
           printMountainDetailInfo( aMountainName )
       print( "" )
+
+
 
 def openCsv( fileName, delimiter="," ):
   result = []
@@ -695,7 +698,7 @@ def openCsv( fileName, delimiter="," ):
 def isMatchedMountainRobust(arrayData, search):
   result = False
   for aData in arrayData:
-    if aData.find(search)!=-1 or search.find(aData)!=-1:
+    if aData.startswith(search) or search.startswith(aData):
       result = True
       break
   return result
@@ -736,21 +739,23 @@ if __name__=="__main__":
     parser.print_help()
     exit(-1)
 
+  startTime, endTime = getTimeRange( args.time )
+
   mountainWeathers={}
   for aMountain in mountains:
     mountainKeys = getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      mountainWeathers[ theMountain ] = addingScoringMountain( getWeather( mountainDic[theMountain] ), args.score )
+      theWeather = addingScoringMountain( getWeather( mountainDic[theMountain] ), args.score )
+      stadndarizedData = getStandardizedMountainData(theWeather)
+      mountainWeathers[ theMountain ] = getFilteredMountainInfo( stadndarizedData, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
 
-  perKeyMaxLengths = get_max_length_per_category(mountainWeathers)
   nonDispKeys = ["url", "score"]
-  startTime, endTime = getTimeRange( args.time )
 
   if False == args.compare or args.noDetails:
-    mountains = dumpPerMountain(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions, args.noDetails )
+    mountains = dumpPerMountain(mountainWeathers, args.noDetails )
     if args.noDetails:
       for aMountain in mountains:
         print( aMountain, end = " " )
       print( "" )
   else:
-    dumpPerCategory(mountainWeathers, nonDispKeys, args.date, startTime, endTime, args.acceptClimbRates )
+    dumpPerCategory(mountainWeathers, nonDispKeys )
