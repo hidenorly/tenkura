@@ -26,17 +26,22 @@ from bs4 import BeautifulSoup
 import mountainDic
 import mountainInfoDic
 
-mountains = []
-mountainDic = mountainDic.getMountainDic()
-mountainInfoDic = mountainInfoDic.getMountainInfoDic()
-
 class MountainDicUtil:
+  mountainDic = mountainDic.getMountainDic()
+
   @staticmethod
   def getMountainKeys(key):
     result = set()
-    for dicKey, value in mountainDic.items():
+    for dicKey, value in MountainDicUtil.mountainDic.items():
       if dicKey.startswith(key):
         result.add( dicKey )
+    return result
+
+  @staticmethod
+  def getUrl(mountainKey):
+    result = ""
+    if mountainKey in MountainDicUtil.mountainDic:
+      result = MountainDicUtil.mountainDic[ mountainKey ]
     return result
 
 
@@ -293,12 +298,14 @@ class TenkuraScoreUtil:
 
 
 class MountainDetailUtil:
+  mountainInfoDic = mountainInfoDic.getMountainInfoDic()
+
   @staticmethod
   def getMountainDetailInfo(mountainName):
     result = None
 
-    if( mountainName in mountainInfoDic):
-      result = mountainInfoDic[mountainName]
+    if( mountainName in MountainDetailUtil.mountainInfoDic):
+      result = MountainDetailUtil.mountainInfoDic[mountainName]
     else:
       pos = mountainName.find("_")
       if pos != -1:
@@ -306,7 +313,7 @@ class MountainDetailUtil:
       pos = mountainName.find("（")
       if pos != -1:
         mountainName = mountainName[0 : pos - 1 ]
-      for aMountainName, anInfo in mountainInfoDic.items():
+      for aMountainName, anInfo in MountainDetailUtil.mountainInfoDic.items():
         if aMountainName.find( mountainName )!=-1:
           result = anInfo
           break
@@ -763,6 +770,7 @@ if __name__=="__main__":
 
   args = parser.parse_args()
 
+  mountains = []
   mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
   mountains = set( mountains )
   acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
@@ -777,7 +785,7 @@ if __name__=="__main__":
   for aMountain in mountains:
     mountainKeys = MountainDicUtil.getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      theWeather = TenkuraScoreUtil.addingScoringMountain( TenkuraUtil.getWeather( mountainDic[theMountain] ), args.score )
+      theWeather = TenkuraScoreUtil.addingScoringMountain( TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) ), args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
       mountainWeathers[ theMountain ] = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
 
