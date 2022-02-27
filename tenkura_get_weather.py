@@ -657,6 +657,7 @@ class TenkuraReportUtil:
 
   @staticmethod
   def dumpPerCategory(standarizedData, nonDispKeys):
+    result = set()
     dispKeys = {}
     dispCategory = {}
     for aMountain, aStadndarizedData in standarizedData.items():
@@ -682,6 +683,7 @@ class TenkuraReportUtil:
                   found = True
                 ReportUtil.printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
                 displayedMountains[aMountainName] = True
+                result.add( aMountainName )
                 foundData = True
 
     # fallback
@@ -695,6 +697,7 @@ class TenkuraReportUtil:
               foundData = True
             ReportUtil.printKeyArray( aMountainName, 20, weeklyData, lPadding=" ")
             displayedMountains[aMountainName] = True
+            result.add( aMountainName )
 
     if foundData:
       # display detail information
@@ -710,6 +713,8 @@ class TenkuraReportUtil:
           if aDispKey == "url":
             MountainDetailUtil.printMountainDetailInfo( aMountainName )
         print( "" )
+
+    return result
 
 
 class MountainFilterUtil:
@@ -744,14 +749,15 @@ class MountainFilterUtil:
 
   @staticmethod
   def mountainsIncludeExcludeFromFile( mountains, excludeFile, includeFile ):
-    result = []
+    result = set()
+    mountains = set( mountains )
     excludes = list( itertools.chain.from_iterable( MountainFilterUtil.openCsv( excludeFile ) ) )
     includes = list( itertools.chain.from_iterable( MountainFilterUtil.openCsv( includeFile ) ) )
     for aMountain in includes:
-      mountains.append( aMountain )
+      mountains.add( aMountain )
     for aMountain in mountains:
       if not MountainFilterUtil.isMatchedMountainRobust( excludes, aMountain ):
-        result.append( aMountain )
+        result.add( aMountain )
     return result
 
 
@@ -767,25 +773,27 @@ if __name__=="__main__":
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='rain,thunder', help='specify excluding weather conditions default:rain,thunder')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
+  parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
 
   args = parser.parse_args()
 
-  mountains = []
+  mountains = set()
   mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
-  mountains = set( mountains )
   acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
   if len(mountains) == 0:
     parser.print_help()
     exit(-1)
 
+  mountainList = args.mountainList | args.noDetails
   startTime, endTime = TenkuraFilterUtil.getTimeRange( args.time )
 
   mountainWeathers={}
   for aMountain in mountains:
     mountainKeys = MountainDicUtil.getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      theWeather = TenkuraScoreUtil.addingScoringMountain( TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) ), args.score )
+      theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) )
+      theWeather = TenkuraScoreUtil.addingScoringMountain( theWeather, args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
       mountainWeathers[ theMountain ] = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
 
@@ -793,9 +801,10 @@ if __name__=="__main__":
 
   if False == args.compare or args.noDetails:
     mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails )
-    if args.noDetails:
-      for aMountain in mountains:
-        print( aMountain, end = " " )
-      print( "" )
   else:
-    TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys )
+    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys )
+
+  if mountainList:
+    for aMountain in mountains:
+      print( aMountain, end = " " )
+    print( "" )
