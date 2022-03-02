@@ -750,9 +750,8 @@ class MountainFilterUtil:
   @staticmethod
   def mountainsIncludeExcludeFromFile( mountains, excludeFile, includeFile ):
     result = set()
-    mountains = set( mountains )
-    excludes = list( itertools.chain.from_iterable( MountainFilterUtil.openCsv( excludeFile ) ) )
-    includes = list( itertools.chain.from_iterable( MountainFilterUtil.openCsv( includeFile ) ) )
+    excludes = set( itertools.chain.from_iterable( MountainFilterUtil.openCsv( excludeFile ) ) )
+    includes = set( itertools.chain.from_iterable( MountainFilterUtil.openCsv( includeFile ) ) )
     for aMountain in includes:
       mountains.add( aMountain )
     for aMountain in mountains:
@@ -777,7 +776,6 @@ if __name__=="__main__":
 
   args = parser.parse_args()
 
-  mountains = set()
   mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
   acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
