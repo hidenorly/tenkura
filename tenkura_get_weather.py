@@ -776,7 +776,7 @@ if __name__=="__main__":
 
   args = parser.parse_args()
 
-  mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( args.args, args.exclude, args.include )
+  mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
   acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
   if len(mountains) == 0:
