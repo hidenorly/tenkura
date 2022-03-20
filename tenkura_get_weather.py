@@ -493,6 +493,18 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
+  def getListOfDates(dateOptionString):
+    result = [ dateOptionString ]
+
+    if dateOptionString.find(",")!=-1:
+      result = dateOptionString.split(",")
+    elif dateOptionString.find("-")!=-1:
+      # TODO : Support e.g. 3/20-3/22 => 3/20, 3/21, 3/22
+      result = dateOptionString.split("-")
+
+    return result
+
+  @staticmethod
   def getDateScore(key):
     result = 0
     month, day = TenkuraFilterUtil.getDate( key )
@@ -501,13 +513,15 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
-  def isMatchedDate(key, targetDateMMDD):
+  def isMatchedDate(key, targetDateMMDDs):
     result = False
   #  pos = key.find( targetDateMMDD )
   #  if pos!=-1 or targetDateMMDD=="":
   #    result = True
-    if targetDateMMDD=="" or TenkuraFilterUtil.getDateScore(key) == TenkuraFilterUtil.getDateScore(targetDateMMDD):
-      result = True
+    for targetDateMMDD in targetDateMMDDs:
+      if targetDateMMDD=="" or TenkuraFilterUtil.getDateScore(key) == TenkuraFilterUtil.getDateScore(targetDateMMDD):
+        result = True
+        break
 
     return result
 
@@ -546,14 +560,15 @@ class TenkuraFilterUtil:
     result = True
     acceptableClimbRates = acceptableClimbRates.split(",")
     for aData in arrayData:
-      isOk = False
-      for anAcceptableRate in acceptableClimbRates:
-        if aData == anAcceptableRate:
-          isOk = True
+      if aData!="":
+        isOk = False
+        for anAcceptableRate in acceptableClimbRates:
+          if aData == anAcceptableRate:
+            isOk = True
+            break
+        if not isOk:
+          result = False
           break
-      if not isOk:
-        result = False
-        break
 
     return result
 
@@ -561,14 +576,16 @@ class TenkuraFilterUtil:
   def isAcceptableWeatherConditions( arrayData, acceptableWeatherConditions ):
     result = True
     for aData in arrayData:
-      result = acceptableWeatherConditions[ aData.strip() ]
-      if result == False:
-        break
+      aData = aData.strip()
+      if aData!="":
+        result = acceptableWeatherConditions[ aData ]
+        if result == False:
+          break
 
     return result
 
   @staticmethod
-  def getFilteredMountainInfo(stadndarizedData, targetDateMMDD, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions):
+  def getFilteredMountainInfo(stadndarizedData, targetDateMMDDs, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions):
     result = {}
     result["climbRate"] = {}
     result["climbRate_weekly"] = {}
@@ -579,7 +596,7 @@ class TenkuraFilterUtil:
     found = False
     # per day : climb rate & weather rate
     for key, climbData in stadndarizedData["climbRate"].items():
-      if TenkuraFilterUtil.isMatchedDate( key, targetDateMMDD ):
+      if TenkuraFilterUtil.isMatchedDate( key, targetDateMMDDs ):
         climbData = TenkuraFilterUtil.getTimeRangeFilter( climbData, startTime, endTime )
         if TenkuraFilterUtil.isAcceptableClimbRateRange( climbData, acceptableClimbRates ):
           found = True
@@ -592,14 +609,20 @@ class TenkuraFilterUtil:
 
     # weekly climb rate
     climbRateDayMax = TenkuraFilterUtil.getMaxDateMMDD( stadndarizedData["climbRate"] )
+    if climbRateDayMax=="":
+      climbRateDayMax = datetime.datetime.now().strftime('%m/%d')
     if climbRateDayMax!="":
       climbRateDayMax_dateTime = TenkuraFilterUtil.getDateTimeFromMMDD( climbRateDayMax )
       weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
 
       if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
         weeklyData = stadndarizedData["climbRate_weekly"]["weekly"]
-        if targetDateMMDD!="":
-          weeklyData = TenkuraFilterUtil.getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, TenkuraFilterUtil.getDateTimeFromMMDD(targetDateMMDD) )
+        if str(targetDateMMDDs)!="":
+          tmp = []
+          for targetDateMMDD in targetDateMMDDs:
+            aMatchedWeek = TenkuraFilterUtil.getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, TenkuraFilterUtil.getDateTimeFromMMDD(targetDateMMDD) )
+            tmp.extend( aMatchedWeek )
+          weeklyData = tmp
         if len( weeklyData )!=0:
           if TenkuraFilterUtil.isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
             result["climbRate_weekly"]["weekly"] = weeklyData
@@ -766,7 +789,7 @@ if __name__=="__main__":
   parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
-  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14')
+  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/15')
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
@@ -785,6 +808,7 @@ if __name__=="__main__":
 
   mountainList = args.mountainList | args.noDetails
   startTime, endTime = TenkuraFilterUtil.getTimeRange( args.time )
+  specifiedDate = TenkuraFilterUtil.getListOfDates( args.date )
 
   mountainWeathers={}
   for aMountain in mountains:
@@ -793,7 +817,7 @@ if __name__=="__main__":
       theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) )
       theWeather = TenkuraScoreUtil.addingScoringMountain( theWeather, args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
-      mountainWeathers[ theMountain ] = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, args.date, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
+      mountainWeathers[ theMountain ] = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
 
   nonDispKeys = ["url", "score"]
 
