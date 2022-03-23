@@ -493,14 +493,31 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
+  def getListOfRangedDates(fromDay, toDay):
+    result = []
+
+    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( fromDay )
+    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( toDay )
+    if fromDay > toDay:
+      fromDay, toDay = toDay, fromDay
+
+    theDay = fromDay
+    while theDay <= toDay:
+      result.append( theDay.strftime( "%m/%d" ) )
+      theDay = theDay + datetime.timedelta(days=1)
+
+    return result
+
+  @staticmethod
   def getListOfDates(dateOptionString):
     result = [ dateOptionString ]
 
+    # TODO: Support e.g. 3/20,3/22-3/23 => 3/20, 3/22, 3/23
     if dateOptionString.find(",")!=-1:
       result = dateOptionString.split(",")
     elif dateOptionString.find("-")!=-1:
-      # TODO : Support e.g. 3/20-3/22 => 3/20, 3/21, 3/22
-      result = dateOptionString.split("-")
+      rangeDays = dateOptionString.split("-")
+      result = TenkuraFilterUtil.getListOfRangedDates( rangeDays[0], rangeDays[1] )
 
     return result
 
