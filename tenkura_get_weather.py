@@ -510,14 +510,18 @@ class TenkuraFilterUtil:
 
   @staticmethod
   def getListOfDates(dateOptionString):
-    result = [ dateOptionString ]
+    result = []
 
-    # TODO: Support e.g. 3/20,3/22-3/23 => 3/20, 3/22, 3/23
-    if dateOptionString.find(",")!=-1:
-      result = dateOptionString.split(",")
-    elif dateOptionString.find("-")!=-1:
-      rangeDays = dateOptionString.split("-")
-      result = TenkuraFilterUtil.getListOfRangedDates( rangeDays[0], rangeDays[1] )
+    commaValues = dateOptionString.split(",")
+    for aValue in commaValues:
+      rangedValue = aValue.split("-")
+      if len( rangedValue ) == 2:
+        result.extend( TenkuraFilterUtil.getListOfRangedDates( rangedValue[0], rangedValue[1] ) )
+      else:
+        result.append( aValue )
+
+    if len(result) == 0:
+      result = [ dateOptionString ]
 
     return result
 
@@ -806,7 +810,7 @@ if __name__=="__main__":
   parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
-  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/15')
+  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
