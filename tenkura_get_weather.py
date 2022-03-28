@@ -606,6 +606,28 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
+  def getAcceptableClimbRateRangesForWeek( weeklyData, acceptableClimbRates ):
+    result = []
+    for aData in weeklyData:
+      found = False
+      for anAcceptableClimbRate in acceptableClimbRates:
+        if aData == anAcceptableClimbRate:
+          result.append( aData )
+          found = True
+          break
+      if not found:
+        result.append("-")
+
+    foundCount = 0
+    for aData in result:
+      if aData != "-":
+        foundCount = foundCount + 1
+    if foundCount==0:
+      result = []
+
+    return result
+
+  @staticmethod
   def getFilteredMountainInfo(stadndarizedData, targetDateMMDDs, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions):
     result = {}
     result["climbRate"] = {}
@@ -614,13 +636,11 @@ class TenkuraFilterUtil:
     result["weather_weekly"] = {}
     result["misc"] = stadndarizedData["misc"]
 
-    found = False
     # per day : climb rate & weather rate
     for key, climbData in stadndarizedData["climbRate"].items():
       if TenkuraFilterUtil.isMatchedDate( key, targetDateMMDDs ):
         climbData = TenkuraFilterUtil.getTimeRangeFilter( climbData, startTime, endTime )
         if TenkuraFilterUtil.isAcceptableClimbRateRange( climbData, acceptableClimbRates ):
-          found = True
           if key in stadndarizedData["weather"]:
             weatherData = stadndarizedData["weather"][key]
             weatherData = TenkuraFilterUtil.getTimeRangeFilter( weatherData, startTime, endTime )
@@ -645,9 +665,9 @@ class TenkuraFilterUtil:
             tmp.extend( aMatchedWeek )
           weeklyData = tmp
         if len( weeklyData )!=0:
-          if TenkuraFilterUtil.isAcceptableClimbRateRange( weeklyData, acceptableClimbRates ):
-            result["climbRate_weekly"]["weekly"] = weeklyData
-            found = True
+          filteredWeeklyClimbRates = TenkuraFilterUtil.getAcceptableClimbRateRangesForWeek( weeklyData, acceptableClimbRates )
+          if len(filteredWeeklyClimbRates)!=0:
+            result["climbRate_weekly"]["weekly"] = filteredWeeklyClimbRates
 
     return result
 
@@ -838,7 +858,9 @@ if __name__=="__main__":
       theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) )
       theWeather = TenkuraScoreUtil.addingScoringMountain( theWeather, args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
-      mountainWeathers[ theMountain ] = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
+      filteredMountainWeathers = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
+      if len(filteredMountainWeathers)!=0:
+        mountainWeathers[ theMountain ] = filteredMountainWeathers
 
   nonDispKeys = ["url", "score"]
 
