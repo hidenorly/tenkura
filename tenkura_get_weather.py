@@ -493,11 +493,24 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
+  def ensureMonth(mmdd, refMMDD):
+    result = mmdd
+    if mmdd.find("/")==-1:
+      pos = refMMDD.find("/")
+      if pos!=-1:
+        result = refMMDD[0:pos] + "/" + mmdd
+      else:
+        result = datetime.datetime.now().strftime("%m") + "/" + mmdd
+
+    return result
+
+  @staticmethod
   def getListOfRangedDates(fromDay, toDay):
     result = []
 
-    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( fromDay )
-    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( toDay )
+    refFromDay = fromDay
+    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( TenkuraFilterUtil.ensureMonth( fromDay, toDay ) )
+    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( TenkuraFilterUtil.ensureMonth( toDay, refFromDay ) )
     if fromDay > toDay:
       fromDay, toDay = toDay, fromDay
 
@@ -514,9 +527,10 @@ class TenkuraFilterUtil:
 
     commaValues = dateOptionString.split(",")
     for aValue in commaValues:
+      aValue = aValue.strip()
       rangedValue = aValue.split("-")
       if len( rangedValue ) == 2:
-        result.extend( TenkuraFilterUtil.getListOfRangedDates( rangedValue[0], rangedValue[1] ) )
+        result.extend( TenkuraFilterUtil.getListOfRangedDates( rangedValue[0].strip(), rangedValue[1].strip() ) )
       else:
         result.append( aValue )
 
