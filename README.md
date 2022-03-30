@@ -28,7 +28,7 @@ optional arguments:
   -s SCORE, --score SCORE
                         specify score key e.g. 登山_明日, 天気_今日, etc.
   -t TIME, --time TIME  specify time range e.g. 6-15
-  -d DATE, --date DATE  specify date e.g. 2/14
+  -d DATE, --date DATE  specify date e.g. 2/14,2/16-2/17
   -e EXCLUDE, --exclude EXCLUDE
                         specify excluding mountain list file e.g. climbedMountains.lst
   -i INCLUDE, --include INCLUDE
