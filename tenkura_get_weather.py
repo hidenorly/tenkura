@@ -438,7 +438,7 @@ class TenkuraFilterUtil:
     for anId, aWeather in TenkuraUtil.weatherStatusDic.items():
       isOk = True
       for anExclude in excludingWeathers:
-        if anExclude.find( aWeather )!=-1 or aWeather.find( anExclude )!=-1:
+        if anExclude and ( anExclude.find( aWeather )!=-1 or aWeather.find( anExclude )!=-1 ):
           isOk = False
           break
       result[ aWeather ] = isOk
@@ -642,6 +642,27 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
+  def getDispDays(weeklyDates):
+    weeklyDays = ""
+    lastMonth = ""
+
+    for aDay in weeklyDates:
+      theDay = aDay
+      if theDay.startswith("0"):
+        theDay = theDay[1:len(theDay)]
+      posMonth = theDay.find("/")
+      if posMonth!=-1:
+        if lastMonth == theDay[0:posMonth]:
+          theDay = theDay[posMonth+1:len(theDay)]
+        else:
+          lastMonth = theDay[0:posMonth]
+      weeklyDays = weeklyDays + "," + theDay
+    if weeklyDays.startswith(","):
+      weeklyDays = weeklyDays[1:len(weeklyDays)]
+
+    return weeklyDays
+
+  @staticmethod
   def getFilteredMountainInfo(stadndarizedData, targetDateMMDDs, startTime, endTime, acceptableClimbRates, acceptableWeatherConditions):
     result = {}
     result["climbRate"] = {}
@@ -649,6 +670,7 @@ class TenkuraFilterUtil:
     result["weather"] = {}
     result["weather_weekly"] = {}
     result["misc"] = stadndarizedData["misc"]
+    weeklyDates = []
 
     # per day : climb rate & weather rate
     for key, climbData in stadndarizedData["climbRate"].items():
@@ -677,18 +699,22 @@ class TenkuraFilterUtil:
           for targetDateMMDD in targetDateMMDDs:
             aMatchedWeek = TenkuraFilterUtil.getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, TenkuraFilterUtil.getDateTimeFromMMDD(targetDateMMDD) )
             tmp.extend( aMatchedWeek )
+            if len( aMatchedWeek )!=0:
+              weeklyDates.append( targetDateMMDD )
           weeklyData = tmp
         if len( weeklyData )!=0:
           filteredWeeklyClimbRates = TenkuraFilterUtil.getAcceptableClimbRateRangesForWeek( weeklyData, acceptableClimbRates )
           if len(filteredWeeklyClimbRates)!=0:
             result["climbRate_weekly"]["weekly"] = filteredWeeklyClimbRates
 
-    return result
+    weeklyDays = TenkuraFilterUtil.getDispDays( weeklyDates )
+
+    return result, weeklyDays
 
 
 class TenkuraReportUtil:
   @staticmethod
-  def dumpPerMountain(mountainWeathers, disablePrint):
+  def dumpPerMountain(mountainWeathers, disablePrint, replaceKeys):
     result = set()
 
     for aMountain, stadndarizedData in mountainWeathers.items():
@@ -711,7 +737,10 @@ class TenkuraReportUtil:
             print( aMountain + " : " )
           found = True
         if not disablePrint:
-          ReportUtil.printKeyArray( "weekly", 20, weeklyData, lPadding=" ")
+          theDispKey = "weekly"
+          if "weekly" in replaceKeys:
+            theDispKey = replaceKeys["weekly"]
+          ReportUtil.printKeyArray( theDispKey, 20, weeklyData, lPadding=" ")
         result.add( aMountain )
 
       if found and not disablePrint:
@@ -734,7 +763,7 @@ class TenkuraReportUtil:
     return result
 
   @staticmethod
-  def dumpPerCategory(standarizedData, nonDispKeys):
+  def dumpPerCategory(standarizedData, nonDispKeys, replaceKeys):
     result = set()
     dispKeys = {}
     dispCategory = {}
@@ -757,7 +786,10 @@ class TenkuraReportUtil:
                 arrayData = aStandarizedData[aCategoryKey][aDispKey]
                 if found == False:
                   print( "" )
-                  print( aCategoryKey + ":" + aDispKey )
+                  theDispKey = aDispKey
+                  if aDispKey in replaceKeys:
+                    theDispKey = replaceKeys[aDispKey]
+                  print( aCategoryKey + ":" + theDispKey )
                   found = True
                 ReportUtil.printKeyArray( aMountainName, 20, arrayData, lPadding=" " )
                 displayedMountains[aMountainName] = True
@@ -848,7 +880,7 @@ if __name__=="__main__":
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
-  parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='rain,thunder', help='specify excluding weather conditions default:rain,thunder')
+  parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
   parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
 
@@ -866,22 +898,26 @@ if __name__=="__main__":
   specifiedDate = TenkuraFilterUtil.getListOfDates( args.date )
 
   mountainWeathers={}
+  replaceDispKeys = {}
+  replaceDispKeys["weekly"] = ""
   for aMountain in mountains:
     mountainKeys = MountainDicUtil.getMountainKeys(aMountain)
     for theMountain in mountainKeys:
       theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) )
       theWeather = TenkuraScoreUtil.addingScoringMountain( theWeather, args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
-      filteredMountainWeathers = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
+      filteredMountainWeathers, weeklyDays = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
       if len(filteredMountainWeathers)!=0:
         mountainWeathers[ theMountain ] = filteredMountainWeathers
+        if len(weeklyDays)>len(replaceDispKeys["weekly"]):
+          replaceDispKeys["weekly"] = weeklyDays
 
   nonDispKeys = ["url", "score"]
 
   if False == args.compare or args.noDetails:
-    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails )
+    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, replaceDispKeys )
   else:
-    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys )
+    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys, replaceDispKeys )
 
   if mountainList:
     for aMountain in mountains:
