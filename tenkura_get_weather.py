@@ -493,8 +493,10 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
-  def ensureMonth(mmdd, refMMDD):
+  def ensureMonth(mmdd, refMMDD = None):
     result = mmdd
+    if refMMDD==None:
+      refMMDD = datetime.datetime.now().strftime("%m/%d")
     if mmdd.find("/")==-1:
       pos = refMMDD.find("/")
       if pos!=-1:
@@ -532,7 +534,10 @@ class TenkuraFilterUtil:
       if len( rangedValue ) == 2:
         result.extend( TenkuraFilterUtil.getListOfRangedDates( rangedValue[0].strip(), rangedValue[1].strip() ) )
       else:
-        result.append( aValue )
+        if not aValue:
+          result.append( aValue )
+        else:
+          result.append( TenkuraFilterUtil.ensureMonth( aValue ) )
 
     if len(result) == 0:
       result = [ dateOptionString ]
