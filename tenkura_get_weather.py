@@ -20,6 +20,7 @@ import datetime
 import csv
 import itertools
 import os
+import json
 
 from bs4 import BeautifulSoup
 
@@ -42,6 +43,114 @@ class MountainDicUtil:
     result = ""
     if mountainKey in MountainDicUtil.mountainDic:
       result = MountainDicUtil.mountainDic[ mountainKey ]
+    return result
+
+
+class WeatherCache:
+  CACHE_BASE_DIR = os.path.expanduser("~")+"/.cache/weather"
+  CACHE_EXPIRE_HOURS = 1 # 1 hour
+
+  @staticmethod
+  def ensureCacheStorage():
+    if not os.path.exists(WeatherCache.CACHE_BASE_DIR):
+      os.makedirs(WeatherCache.CACHE_BASE_DIR)
+
+  @staticmethod
+  def getCacheFilename(url):
+    result = url
+    pos = str(url).rfind("/")
+    if pos!=-1:
+      result = url[pos+1:len(url)]
+    return result
+
+  @staticmethod
+  def getCachePath(url):
+    return WeatherCache.CACHE_BASE_DIR+"/"+WeatherCache.getCacheFilename(url)
+
+  @staticmethod
+  def storeToCache(url, result):
+    WeatherCache.ensureCacheStorage()
+    cachePath = WeatherCache.getCachePath( url )
+    dt_now = datetime.datetime.now()
+    _result = {}
+    _result["body"] = result
+    _result["lastUpdate"] = dt_now.strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(cachePath, 'w', encoding='UTF-8') as f:
+      json.dump(_result, f, indent = 4, ensure_ascii=False)
+      f.close()
+
+  @staticmethod
+  def restoreFromCache(cachePath):
+    result = None
+    with open(cachePath, 'r', encoding='UTF-8') as f:
+      _result = json.load(f)
+
+    if "lastUpdate" in _result:
+      lastUpdate = datetime.datetime.strptime(_result["lastUpdate"], "%Y-%m-%d %H:%M:%S")
+      dt_now = datetime.datetime.now()
+      if dt_now < ( lastUpdate+datetime.timedelta(hours=WeatherCache.CACHE_EXPIRE_HOURS) ):
+        del _result["lastUpdate"]
+        if "body" in _result:
+          result = _result["body"]
+
+    return result
+
+  @staticmethod
+  def getCachedWeather(url):
+    result = None
+    cachePath = WeatherCache.getCachePath( url )
+    if os.path.exists( cachePath ):
+      result = WeatherCache.restoreFromCache( cachePath )
+
+    return result
+
+  @staticmethod
+  def getRawWeather(url):
+    result = []
+    theDay = []
+    result.append( url )
+
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'html.parser')
+    tables = soup.find_all("table")#, class_='only-pc')
+    if None != tables:
+      for aTable in tables:
+        rows = aTable.find_all("tr")
+        theDay = []
+        if None != rows:
+          for aRow in rows:
+            cols = aRow.find_all("td")
+            if None != cols:
+              for aCol in cols:
+                text = aCol.getText().strip()
+                if ( text.find("/")!=-1 and text.find("(")!=-1 and text.find(")")!=-1 and text.find("風(m/s)")==-1) or text.find("週　間　予　報")!=-1:
+                  result.append("_"+text)
+                imgs = aCol.find_all("img")
+                for anImg in imgs:
+                  theUrl = anImg.get("src").strip()
+                  imgAlt = anImg.get("alt").strip()
+                  if imgAlt == "登山指数":
+                    climbScore = TenkuraUtil.getClimbScore(theUrl)
+                    if None != climbScore :
+                      theDay.append(climbScore)
+                      TenkuraUtil.maintainResult(result, "登山")
+                  elif imgAlt == "天気":
+                    weatherScore = TenkuraUtil.getWeatherScore(theUrl)
+                    if None != weatherScore :
+                      theDay.append(weatherScore)
+                      TenkuraUtil.maintainResult(result, "天気")
+        if len(theDay) != 0:
+          result.append( theDay )
+
+    return result
+
+  @staticmethod
+  def getWeather(url, forceReload = False):
+    result = WeatherCache.getCachedWeather( url )
+    if result == None or forceReload:
+      result = WeatherCache.getRawWeather( url )
+      WeatherCache.storeToCache( url, result )
     return result
 
 
@@ -199,42 +308,7 @@ class TenkuraUtil:
 
   @staticmethod
   def getWeather(url):
-    result = []
-    theDay = []
-    result.append( url )
-
-    res = requests.get(url)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    tables = soup.find_all("table")#, class_='only-pc')
-    if None != tables:
-      for aTable in tables:
-        rows = aTable.find_all("tr")
-        theDay = []
-        if None != rows:
-          for aRow in rows:
-            cols = aRow.find_all("td")
-            if None != cols:
-              for aCol in cols:
-                text = aCol.getText().strip()
-                if ( text.find("/")!=-1 and text.find("(")!=-1 and text.find(")")!=-1 and text.find("風(m/s)")==-1) or text.find("週　間　予　報")!=-1:
-                  result.append("_"+text)
-                imgs = aCol.find_all("img")
-                for anImg in imgs:
-                  theUrl = anImg.get("src").strip()
-                  imgAlt = anImg.get("alt").strip()
-                  if imgAlt == "登山指数":
-                    climbScore = TenkuraUtil.getClimbScore(theUrl)
-                    if None != climbScore :
-                      theDay.append(climbScore)
-                      TenkuraUtil.maintainResult(result, "登山")
-                  elif imgAlt == "天気":
-                    weatherScore = TenkuraUtil.getWeatherScore(theUrl)
-                    if None != weatherScore :
-                      theDay.append(weatherScore)
-                      TenkuraUtil.maintainResult(result, "天気")
-        if len(theDay) != 0:
-          result.append( theDay )
-
+    result = WeatherCache.getWeather(url)
     return TenkuraUtil.filterWeather(result)
 
 
