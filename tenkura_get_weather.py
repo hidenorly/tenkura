@@ -307,8 +307,8 @@ class TenkuraUtil:
       result[len(result)-1] = separator + theValue
 
   @staticmethod
-  def getWeather(url):
-    result = WeatherCache.getWeather(url)
+  def getWeather(url, foreceReload = False):
+    result = WeatherCache.getWeather(url, foreceReload)
     return TenkuraUtil.filterWeather(result)
 
 
@@ -962,6 +962,7 @@ if __name__=="__main__":
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
   parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
+  parser.add_argument('-r', '--renew', action='store_true', default=False, help='get latest data although cache exists')
 
   args = parser.parse_args()
 
@@ -982,7 +983,7 @@ if __name__=="__main__":
   for aMountain in mountains:
     mountainKeys = MountainDicUtil.getMountainKeys(aMountain)
     for theMountain in mountainKeys:
-      theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ) )
+      theWeather = TenkuraUtil.getWeather( MountainDicUtil.getUrl( theMountain ), args.renew )
       theWeather = TenkuraScoreUtil.addingScoringMountain( theWeather, args.score )
       stadndarizedData = TenkuraStandardizedUtil.getStandardizedMountainData(theWeather)
       filteredMountainWeathers, weeklyDays = TenkuraFilterUtil.getFilteredMountainInfo( stadndarizedData, specifiedDate, startTime, endTime, args.acceptClimbRates, acceptableWeatherConditions )
