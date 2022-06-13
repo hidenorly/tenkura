@@ -15,7 +15,9 @@ $ python3 tenkura_get_weather.py 櫛形山_2
 ```
 
 ```
-usage: tenkura_get_weather.py [-h] [-c] [-s SCORE] [-t TIME] [-d DATE] [-e EXCLUDE] [-i INCLUDE] [-a ACCEPTCLIMBRATES] [-w EXCLUDEWEATHERCONDITIONS] [-nn] [-m] [args ...]
+usage: tenkura_get_weather.py [-h] [-c] [-s SCORE] [-t TIME] [-d DATE] [-e EXCLUDE] [-i INCLUDE] [-a ACCEPTCLIMBRATES]
+                              [-w EXCLUDEWEATHERCONDITIONS] [-nn] [-m] [-r]
+                              [args ...]
 
 Parse command line options.
 
@@ -36,7 +38,14 @@ optional arguments:
   -a ACCEPTCLIMBRATES, --acceptClimbRates ACCEPTCLIMBRATES
                         specify acceptable climbRate conditions default:A,B,C
   -w EXCLUDEWEATHERCONDITIONS, --excludeWeatherConditions EXCLUDEWEATHERCONDITIONS
-                        specify excluding weather conditions default:rain,thunder
+                        specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)
   -nn, --noDetails      specify if you want to output mountain name only
   -m, --mountainList    specify if you want to output mountain name list
+  -r, --renew           get latest data although cache exists
  ```
+
+
+ # Todo
+
+ * [] Add support for crossing months case. e.g. if today is 4/23 and if -d includes "1" then should handle as "5/1".
+ 
