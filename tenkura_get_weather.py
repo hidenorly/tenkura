@@ -48,7 +48,7 @@ class MountainDicUtil:
 
 class WeatherCache:
   CACHE_BASE_DIR = os.path.expanduser("~")+"/.cache/weather"
-  CACHE_EXPIRE_HOURS = 1 # 1 hour
+  CACHE_EXPIRE_HOURS = 3 # 3 hour
 
   @staticmethod
   def ensureCacheStorage():
@@ -80,6 +80,19 @@ class WeatherCache:
       json.dump(_result, f, indent = 4, ensure_ascii=False)
       f.close()
 
+
+  @staticmethod
+  def isValidCache( lastUpdateString ):
+    result = False
+    lastUpdate = datetime.datetime.strptime(lastUpdateString, "%Y-%m-%d %H:%M:%S")
+    dt_now = datetime.datetime.now()
+    if dt_now < ( lastUpdate+datetime.timedelta(hours=WeatherCache.CACHE_EXPIRE_HOURS) ):
+      # the following is tenkura specific since the forecast is updated every 3 hours.
+      if int(dt_now.hour / WeatherCache.CACHE_EXPIRE_HOURS) == int(lastUpdate.hour / WeatherCache.CACHE_EXPIRE_HOURS):
+        result = True
+
+    return result
+
   @staticmethod
   def restoreFromCache(cachePath):
     result = None
@@ -87,9 +100,7 @@ class WeatherCache:
       _result = json.load(f)
 
     if "lastUpdate" in _result:
-      lastUpdate = datetime.datetime.strptime(_result["lastUpdate"], "%Y-%m-%d %H:%M:%S")
-      dt_now = datetime.datetime.now()
-      if dt_now < ( lastUpdate+datetime.timedelta(hours=WeatherCache.CACHE_EXPIRE_HOURS) ):
+      if WeatherCache.isValidCache( _result["lastUpdate"] ):
         del _result["lastUpdate"]
         if "body" in _result:
           result = _result["body"]
