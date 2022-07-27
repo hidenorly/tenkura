@@ -1,4 +1,4 @@
-#   Copyright 2021 hidenorly
+#   Copyright 2021, 2022 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -946,12 +946,21 @@ class MountainFilterUtil:
         break
     return result
 
+  @staticmethod
+  def getSetOfCsvs( csvFiles ):
+    result = set()
+    csvFiles = csvFiles.split(",")
+    for aCsvFile in csvFiles:
+      aCsvFile = os.path.expanduser( aCsvFile )
+      theSet = set( itertools.chain.from_iterable( MountainFilterUtil.openCsv( aCsvFile ) ) )
+      result = result.union( theSet )
+    return result
 
   @staticmethod
   def mountainsIncludeExcludeFromFile( mountains, excludeFile, includeFile ):
     result = set()
-    excludes = set( itertools.chain.from_iterable( MountainFilterUtil.openCsv( excludeFile ) ) )
-    includes = set( itertools.chain.from_iterable( MountainFilterUtil.openCsv( includeFile ) ) )
+    excludes = MountainFilterUtil.getSetOfCsvs( excludeFile )
+    includes = MountainFilterUtil.getSetOfCsvs( includeFile )
     for aMountain in includes:
       mountains.add( aMountain )
     for aMountain in mountains:
