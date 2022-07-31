@@ -578,28 +578,48 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
-  def ensureMonth(mmdd, refMMDD = None):
-    result = mmdd
-    if refMMDD==None:
-      refMMDD = datetime.datetime.now().strftime("%m/%d")
-    if mmdd.find("/")==-1:
-      pos = refMMDD.find("/")
-      if pos!=-1:
-        result = refMMDD[0:pos] + "/" + mmdd
-      else:
-        result = datetime.datetime.now().strftime("%m") + "/" + mmdd
+  def getMMDD(mmdd):
+    mmdd = str( mmdd )
 
-    return result
+    mm = "0"
+    dd = "0"
+
+    pos = mmdd.find("/")
+    if pos!=-1:
+      mm = mmdd[0:pos]
+      dd = mmdd[pos+1:len(mmdd)]
+    else:
+      dd = mmdd
+
+    return int(mm), int(dd)
+
+  @staticmethod
+  def ensureMonth(mmdd, refMMDD = ""):
+    if refMMDD=="":
+      refMMDD = datetime.datetime.now().strftime("%m/%d")
+
+    mm1, dd1 = TenkuraFilterUtil.getMMDD(mmdd)
+    mm2, dd2 = TenkuraFilterUtil.getMMDD(refMMDD)
+
+    if dd1<dd2:
+      mm1 = ( mm2 + 1 ) % 13
+      if mm1 == 0:
+        mm1 = mm1 + 1
+
+    if mm1 == 0:
+      mm1 = mm2
+
+    return str(mm1)+"/"+str(dd1)
 
   @staticmethod
   def getListOfRangedDates(fromDay, toDay):
     result = []
 
-    refFromDay = fromDay
-    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( TenkuraFilterUtil.ensureMonth( fromDay, toDay ) )
-    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( TenkuraFilterUtil.ensureMonth( toDay, refFromDay ) )
-    if fromDay > toDay:
-      fromDay, toDay = toDay, fromDay
+    fromDay = TenkuraFilterUtil.ensureMonth( fromDay, "" )
+    toDay = TenkuraFilterUtil.ensureMonth( toDay, fromDay )
+
+    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( fromDay )
+    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( toDay )
 
     theDay = fromDay
     while theDay <= toDay:
