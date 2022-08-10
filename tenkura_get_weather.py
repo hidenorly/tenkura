@@ -873,7 +873,7 @@ class TenkuraReportUtil:
     return result
 
   @staticmethod
-  def dumpPerCategory(standarizedData, nonDispKeys, replaceKeys):
+  def dumpPerCategory(standarizedData, nonDispKeys, replaceKeys, targetDateMMDD):
     result = set()
     dispKeys = {}
     dispCategory = {}
@@ -1037,7 +1037,7 @@ if __name__=="__main__":
   if False == args.compare or args.noDetails:
     mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, replaceDispKeys )
   else:
-    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys, replaceDispKeys )
+    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys, replaceDispKeys, str(specifiedDate) )
 
   if mountainList:
     for aMountain in mountains:
