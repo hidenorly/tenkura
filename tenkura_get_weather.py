@@ -578,28 +578,35 @@ class TenkuraFilterUtil:
     return month, day
 
   @staticmethod
-  def getMMDD(mmdd):
-    mmdd = str( mmdd )
-
+  def getYYMMDD(yymmdd):
+    yy = "0"
     mm = "0"
     dd = "0"
 
-    pos = mmdd.find("/")
-    if pos!=-1:
-      mm = mmdd[0:pos]
-      dd = mmdd[pos+1:len(mmdd)]
+    pos1 = yymmdd.find("/")
+    pos2 = yymmdd.rfind("/")
+    if pos1!=-1 and pos2!=-1:
+      if pos1!=pos2:
+        # found yy
+        yy = yymmdd[0:pos1]
+        mm = yymmdd[pos1+1:pos2]
+        dd = yymmdd[pos2+1:len(yymmdd)]
+      else:
+        mm = yymmdd[0:pos2]
+        dd = yymmdd[pos2+1:len(yymmdd)]
     else:
-      dd = mmdd
+      dd = yymmdd
 
-    return int(mm), int(dd)
+    return int(yy), int(mm), int(dd)
+
 
   @staticmethod
-  def ensureMonth(mmdd, refMMDD = ""):
-    if refMMDD=="":
-      refMMDD = datetime.datetime.now().strftime("%m/%d")
+  def ensureYearMonth(yymmdd, refYYMMDD = ""):
+    if refYYMMDD=="":
+      refYYMMDD = datetime.datetime.now().strftime("%Y/%m/%d")
 
-    mm1, dd1 = TenkuraFilterUtil.getMMDD(mmdd)
-    mm2, dd2 = TenkuraFilterUtil.getMMDD(refMMDD)
+    yy1, mm1, dd1 = TenkuraFilterUtil.getYYMMDD(yymmdd)
+    yy2, mm2, dd2 = TenkuraFilterUtil.getYYMMDD(refYYMMDD)
 
     if dd1<dd2:
       mm1 = ( mm2 + 1 ) % 13
@@ -609,17 +616,23 @@ class TenkuraFilterUtil:
     if mm1 == 0:
       mm1 = mm2
 
-    return str(mm1)+"/"+str(dd1)
+    if yy1<yy2:
+      yy1 = yy2
+      if mm1<mm2:
+        yy1 = yy1 + 1
+
+    return str(yy1)+"/"+str(mm1)+"/"+str(dd1)
+
 
   @staticmethod
   def getListOfRangedDates(fromDay, toDay):
     result = []
 
-    fromDay = TenkuraFilterUtil.ensureMonth( fromDay, "" )
-    toDay = TenkuraFilterUtil.ensureMonth( toDay, fromDay )
+    fromDay = TenkuraFilterUtil.ensureYearMonth( fromDay, "" )
+    toDay = TenkuraFilterUtil.ensureYearMonth( toDay, fromDay )
 
-    fromDay = TenkuraFilterUtil.getDateTimeFromMMDD( fromDay )
-    toDay = TenkuraFilterUtil.getDateTimeFromMMDD( toDay )
+    fromDay = TenkuraFilterUtil.getDateTimeFromYYMMDD( fromDay )
+    toDay = TenkuraFilterUtil.getDateTimeFromYYMMDD( toDay )
 
     theDay = fromDay
     while theDay <= toDay:
@@ -642,7 +655,7 @@ class TenkuraFilterUtil:
         if not aValue:
           result.append( aValue )
         else:
-          result.append( TenkuraFilterUtil.ensureMonth( aValue ) )
+          result.append( TenkuraFilterUtil.ensureYearMonth( aValue ) )
 
     if len(result) == 0:
       result = [ dateOptionString ]
@@ -683,11 +696,25 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
-  def getDateTimeFromMMDD(mmdd):
-    if mmdd=="":
-      mmdd="1/1"
-    thisYear = datetime.datetime.now().strftime("%Y")
-    return datetime.datetime.strptime(thisYear + "/" + mmdd, "%Y/%m/%d")
+  def isYearIncluded(yymmdd):
+    yymmdd = str(yymmdd)
+    pos1 = yymmdd.find("/")
+    pos2 = yymmdd.rfind("/")
+    result = False
+    if pos1!=-1 and pos2!=-1 and pos1!=pos2:
+      result = True
+    return result
+
+  @staticmethod
+  def getDateTimeFromYYMMDD(yymmdd):
+    yymmdd = str(yymmdd)
+    if yymmdd=="":
+      yymmdd="1/1"
+
+    if not TenkuraFilterUtil.isYearIncluded(yymmdd):
+      yymmdd = datetime.datetime.now().strftime("%Y") + "/" + yymmdd
+
+    return datetime.datetime.strptime(yymmdd, "%Y/%m/%d")
 
   @staticmethod
   def getDateRangeFilterForWeek(weeklyArrayData, startDateTime, targetDateTime):
@@ -797,9 +824,9 @@ class TenkuraFilterUtil:
     # weekly climb rate
     climbRateDayMax = TenkuraFilterUtil.getMaxDateMMDD( stadndarizedData["climbRate"] )
     if climbRateDayMax=="":
-      climbRateDayMax = datetime.datetime.now().strftime('%m/%d')
+      climbRateDayMax = datetime.datetime.now().strftime('%Y/%m/%d')
     if climbRateDayMax!="":
-      climbRateDayMax_dateTime = TenkuraFilterUtil.getDateTimeFromMMDD( climbRateDayMax )
+      climbRateDayMax_dateTime = TenkuraFilterUtil.getDateTimeFromYYMMDD( climbRateDayMax )
       weekStart_dateTime = climbRateDayMax_dateTime + datetime.timedelta(days=1)
 
       if ( "climbRate_weekly" in stadndarizedData ) and ( "weekly" in stadndarizedData["climbRate_weekly"] ):
@@ -807,7 +834,7 @@ class TenkuraFilterUtil:
         if str(targetDateMMDDs)!="":
           tmp = []
           for targetDateMMDD in targetDateMMDDs:
-            aMatchedWeek = TenkuraFilterUtil.getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, TenkuraFilterUtil.getDateTimeFromMMDD(targetDateMMDD) )
+            aMatchedWeek = TenkuraFilterUtil.getDateRangeFilterForWeek( weeklyData, weekStart_dateTime, TenkuraFilterUtil.getDateTimeFromYYMMDD(targetDateMMDD) )
             tmp.extend( aMatchedWeek )
             if len( aMatchedWeek )!=0:
               weeklyDates.append( targetDateMMDD )
