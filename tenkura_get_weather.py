@@ -566,12 +566,20 @@ class TenkuraFilterUtil:
     day = ""
 
     pos = key.find("/")
-    if pos!=-1:
-      month = key[0:pos]
+    pos2 = key.rfind("/")
+    pos3 = key.find("(")
 
-      pos2 = key.find("(")
-      if pos2!=-1:
-       day = key[pos+1:pos2]
+    if pos!=-1:
+      if pos != pos2:
+        # found year
+        year = key[0:pos]
+        month = key[pos+1:pos2]
+        pos = pos2
+      else:
+        month = key[0:pos]
+
+      if pos3!=-1:
+       day = key[pos+1:pos3]
       else:
        day = key[pos+1:len(key)]
 
@@ -671,11 +679,16 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
+  def getDateTimeFromMMDD(key):
+    result = 0
+    month, day = TenkuraFilterUtil.getDate( key )
+    if month!="" and day!="" and MathUtil.isRobustNumeric(month) and MathUtil.isRobustNumeric(day):
+      result = int( month ) * 31 + int( day )
+    return result
+
+  @staticmethod
   def isMatchedDate(key, targetDateMMDDs):
     result = False
-  #  pos = key.find( targetDateMMDD )
-  #  if pos!=-1 or targetDateMMDD=="":
-  #    result = True
     for targetDateMMDD in targetDateMMDDs:
       if targetDateMMDD=="" or TenkuraFilterUtil.getDateScore(key) == TenkuraFilterUtil.getDateScore(targetDateMMDD):
         result = True
