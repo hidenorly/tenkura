@@ -690,26 +690,33 @@ class TenkuraFilterUtil:
   def isMatchedDate(key, targetDateMMDDs):
     result = False
     for targetDateMMDD in targetDateMMDDs:
-      if targetDateMMDD=="" or TenkuraFilterUtil.getDateScore(key) == TenkuraFilterUtil.getDateScore(targetDateMMDD):
+      if targetDateMMDD=="" or TenkuraFilterUtil.getDateTimeFromYYMMDD(key) == TenkuraFilterUtil.getDateTimeFromYYMMDD(targetDateMMDD):
         result = True
         break
 
     return result
 
   @staticmethod
-  def getMaxDateMMDD(climbRates):
+  def getCleanedDateKey(dateKey):
+    pos = dateKey.rfind("(")
+    if pos!=-1:
+      dateKey = dateKey[0:pos]
+    return dateKey
+
+  @staticmethod
+  def getMaxDateYYMMDD(climbRates):
     result = ""
-    score = 0
+    score = TenkuraFilterUtil.getDateTimeFromYYMMDD("")
     foundKey = ""
     for key, arrayData in climbRates.items():
-      currentScore = TenkuraFilterUtil.getDateScore(key)
+      currentScore = TenkuraFilterUtil.getDateTimeFromYYMMDD(key)
       if currentScore > score:
         score = currentScore
         foundKey = key
 
     if foundKey:
-        month, day = TenkuraFilterUtil.getDate( foundKey )
-        result = month + "/" + day
+        maxDate = TenkuraFilterUtil.getDateTimeFromYYMMDD( foundKey )
+        result = maxDate.strftime('%Y/%m/%d')
 
     return result
 
@@ -726,6 +733,7 @@ class TenkuraFilterUtil:
   @staticmethod
   def getDateTimeFromYYMMDD(yymmdd):
     yymmdd = str(yymmdd)
+    yymmdd = TenkuraFilterUtil.getCleanedDateKey(yymmdd)
     if yymmdd=="":
       yymmdd="1/1"
 
@@ -840,7 +848,7 @@ class TenkuraFilterUtil:
               result["climbRate"][key] = climbData
 
     # weekly climb rate
-    climbRateDayMax = TenkuraFilterUtil.getMaxDateMMDD( stadndarizedData["climbRate"] )
+    climbRateDayMax = TenkuraFilterUtil.getMaxDateYYMMDD( stadndarizedData["climbRate"] )
     if climbRateDayMax=="":
       climbRateDayMax = datetime.datetime.now().strftime('%Y/%m/%d')
     if climbRateDayMax!="":
