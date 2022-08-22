@@ -700,12 +700,17 @@ class TenkuraFilterUtil:
   def getMaxDateMMDD(climbRates):
     result = ""
     score = 0
+    foundKey = ""
     for key, arrayData in climbRates.items():
       currentScore = TenkuraFilterUtil.getDateScore(key)
       if currentScore > score:
         score = currentScore
-        month, day = TenkuraFilterUtil.getDate( key )
+        foundKey = key
+
+    if foundKey:
+        month, day = TenkuraFilterUtil.getDate( foundKey )
         result = month + "/" + day
+
     return result
 
   @staticmethod
