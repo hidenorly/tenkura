@@ -559,32 +559,6 @@ class TenkuraFilterUtil:
       endTime = startTime + 2
     return startTime, endTime
 
-
-  @staticmethod
-  def getDate(key):
-    month = ""
-    day = ""
-
-    pos = key.find("/")
-    pos2 = key.rfind("/")
-    pos3 = key.find("(")
-
-    if pos!=-1:
-      if pos != pos2:
-        # found year
-        year = key[0:pos]
-        month = key[pos+1:pos2]
-        pos = pos2
-      else:
-        month = key[0:pos]
-
-      if pos3!=-1:
-       day = key[pos+1:pos3]
-      else:
-       day = key[pos+1:len(key)]
-
-    return month, day
-
   @staticmethod
   def getYYMMDD(yymmdd):
     yy = "0"
@@ -668,22 +642,6 @@ class TenkuraFilterUtil:
     if len(result) == 0:
       result = [ dateOptionString ]
 
-    return result
-
-  @staticmethod
-  def getDateScore(key):
-    result = 0
-    month, day = TenkuraFilterUtil.getDate( key )
-    if month!="" and day!="" and MathUtil.isRobustNumeric(month) and MathUtil.isRobustNumeric(day):
-      result = int( month ) * 31 + int( day )
-    return result
-
-  @staticmethod
-  def getDateTimeFromMMDD(key):
-    result = 0
-    month, day = TenkuraFilterUtil.getDate( key )
-    if month!="" and day!="" and MathUtil.isRobustNumeric(month) and MathUtil.isRobustNumeric(day):
-      result = int( month ) * 31 + int( day )
     return result
 
   @staticmethod
