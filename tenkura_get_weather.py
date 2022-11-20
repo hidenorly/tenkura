@@ -835,7 +835,7 @@ class TenkuraFilterUtil:
 
 class TenkuraReportUtil:
   @staticmethod
-  def dumpPerMountain(mountainWeathers, disablePrint, replaceKeys):
+  def dumpPerMountain(mountainWeathers, disablePrint, noSupplementalInfo, replaceKeys):
     result = set()
 
     for aMountain, stadndarizedData in mountainWeathers.items():
@@ -877,14 +877,15 @@ class TenkuraReportUtil:
             print( ReportUtil.ljust_jp(" score", 20) + ": " + str(stadndarizedData["misc"]["score"]) )
 
         # print mountain detail
-        MountainDetailUtil.printMountainDetailInfo( aMountain )
+        if not noSupplementalInfo:
+          MountainDetailUtil.printMountainDetailInfo( aMountain )
 
         print("")
 
     return result
 
   @staticmethod
-  def dumpPerCategory(standarizedData, nonDispKeys, replaceKeys, targetDateMMDD):
+  def dumpPerCategory(standarizedData, noSupplementalInfo, nonDispKeys, replaceKeys, targetDateMMDD):
     result = set()
     dispKeys = {}
     dispCategory = {}
@@ -941,7 +942,7 @@ class TenkuraReportUtil:
             theWeather = theWeather["misc"]
           if aDispKey in theWeather:
             print( " " + ReportUtil.ljust_jp(aMountainName, 19) + ": " + str( theWeather[aDispKey] ) )
-          if aDispKey == "url":
+          if aDispKey == "url" and not noSupplementalInfo:
             MountainDetailUtil.printMountainDetailInfo( aMountainName )
         print( "" )
 
@@ -1012,6 +1013,7 @@ if __name__=="__main__":
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
+  parser.add_argument('-ns', '--noSupplementalInfo', action='store_true', default=False, help='specify if you want to output mountain name only')
   parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
   parser.add_argument('-r', '--renew', action='store_true', default=False, help='get latest data although cache exists')
 
@@ -1046,9 +1048,9 @@ if __name__=="__main__":
   nonDispKeys = ["url", "score"]
 
   if False == args.compare or args.noDetails:
-    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, replaceDispKeys )
+    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, args.noSupplementalInfo, replaceDispKeys )
   else:
-    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, nonDispKeys, replaceDispKeys, str(specifiedDate) )
+    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, args.noSupplementalInfo, nonDispKeys, replaceDispKeys, str(specifiedDate) )
 
   if mountainList:
     for aMountain in mountains:
