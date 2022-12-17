@@ -618,7 +618,7 @@ class TenkuraFilterUtil:
 
     theDay = fromDay
     while theDay <= toDay:
-      result.append( theDay.strftime( "%m/%d" ) )
+      result.append( theDay.strftime( "%Y/%m/%d" ) )
       theDay = theDay + datetime.timedelta(days=1)
 
     return result
@@ -708,6 +708,31 @@ class TenkuraFilterUtil:
       if currentDateTime == targetDateTime:
         result.append( aData )
       currentDateTime = currentDateTime + datetime.timedelta(days=1)
+
+    return result
+
+
+  @staticmethod
+  def getWeekEndDates(startDateTime):
+    result = []
+    currentDateTime = startDateTime
+    for i in range(7):
+      weekDay = currentDateTime.weekday()
+      if weekDay == 5 or weekDay == 6:
+        result.append( currentDateTime )
+      currentDateTime = currentDateTime + datetime.timedelta(days=1)
+
+    return result
+
+  @staticmethod
+  def getWeekEndYYMMDD(startDateTime, isMMDD=False):
+    weekendDateTimes = TenkuraFilterUtil.getWeekEndDates(startDateTime)
+    result = []
+    dateFormat = '%Y/%m/%d'
+    if isMMDD:
+      dateFormat = '%m/%d'
+    for theDateTime in weekendDateTimes:
+      result.append( theDateTime.strftime( dateFormat ) )
 
     return result
 
@@ -1008,6 +1033,7 @@ if __name__=="__main__":
   parser.add_argument('-s', '--score', action='store', help='specify score key e.g. 登山_明日, 天気_今日, etc.')
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
+  parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
   parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
@@ -1028,7 +1054,12 @@ if __name__=="__main__":
 
   mountainList = args.mountainList | args.noDetails
   startTime, endTime = TenkuraFilterUtil.getTimeRange( args.time )
+
+  weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now() )
   specifiedDate = TenkuraFilterUtil.getListOfDates( args.date )
+  specifiedDate.extend(weekEndDates)
+  specifiedDate = list(set(filter(None,specifiedDate)))
+  specifiedDate.sort()
 
   mountainWeathers={}
   replaceDispKeys = {}
