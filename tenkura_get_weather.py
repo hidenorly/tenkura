@@ -716,7 +716,9 @@ class TenkuraFilterUtil:
   def getWeekEndDates(startDateTime):
     result = []
     currentDateTime = startDateTime
-    for i in range(7):
+    theRange = 8 if currentDateTime.weekday() == 6 else 7
+
+    for i in range(theRange):
       weekDay = currentDateTime.weekday()
       if weekDay == 5 or weekDay == 6:
         result.append( currentDateTime )
