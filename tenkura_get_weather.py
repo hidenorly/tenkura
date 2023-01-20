@@ -1057,11 +1057,12 @@ if __name__=="__main__":
   mountainList = args.mountainList | args.noDetails
   startTime, endTime = TenkuraFilterUtil.getTimeRange( args.time )
 
-  weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now() )
   specifiedDate = TenkuraFilterUtil.getListOfDates( args.date )
-  specifiedDate.extend(weekEndDates)
-  specifiedDate = list(set(filter(None,specifiedDate)))
-  specifiedDate.sort()
+  if args.dateweekend:
+    weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now() )
+    specifiedDate.extend(weekEndDates)
+    specifiedDate = list(set(filter(None,specifiedDate)))
+    specifiedDate.sort()
 
   mountainWeathers={}
   replaceDispKeys = {}
