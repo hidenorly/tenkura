@@ -1020,8 +1020,12 @@ class MountainFilterUtil:
   @staticmethod
   def mountainsIncludeExcludeFromFile( mountains, excludeFile, includeFile ):
     result = set()
-    excludes = MountainFilterUtil.getSetOfCsvs( excludeFile )
-    includes = MountainFilterUtil.getSetOfCsvs( includeFile )
+    includes = set()
+    excludes = set()
+    for anExclude in excludeFile:
+      excludes =  excludes | MountainFilterUtil.getSetOfCsvs( anExclude )
+    for anInclude in includeFile:
+      includes = includes | MountainFilterUtil.getSetOfCsvs( anInclude )
     for aMountain in includes:
       mountains.add( aMountain )
     for aMountain in mountains:
@@ -1038,8 +1042,8 @@ if __name__=="__main__":
   parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
   parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
-  parser.add_argument('-e', '--exclude', action='store', default='', help='specify excluding mountain list file e.g. climbedMountains.lst')
-  parser.add_argument('-i', '--include', action='store', default='', help='specify including mountain list file e.g. climbedMountains.lst')
+  parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
+  parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
   parser.add_argument('-a', '--acceptClimbRates', action='store', default='A,B,C', help='specify acceptable climbRate conditions default:A,B,C')
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
