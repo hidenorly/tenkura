@@ -585,7 +585,7 @@ class TenkuraFilterUtil:
 
 
   @staticmethod
-  def ensureYearMonth(yymmdd, refYYMMDD = ""):
+  def ensureYearMonth(yymmdd, refYYMMDD = "", isMMDD=True):
     if refYYMMDD=="":
       refYYMMDD = datetime.datetime.now().strftime("%Y/%m/%d")
 
@@ -605,7 +605,10 @@ class TenkuraFilterUtil:
       if mm1<mm2:
         yy1 = yy1 + 1
 
-    return str(yy1)+"/"+str(mm1)+"/"+str(dd1)
+    result = str(yy1)+"/"+str(mm1)+"/"+str(dd1)
+    if isMMDD:
+      result = str(mm1)+"/"+str(dd1)
+    return result
 
 
   @staticmethod
@@ -729,14 +732,14 @@ class TenkuraFilterUtil:
     return result
 
   @staticmethod
-  def getWeekEndYYMMDD(startDateTime, isMMDD=False):
+  def getWeekEndYYMMDD(startDateTime, isMMDD=True):
     weekendDateTimes = TenkuraFilterUtil.getWeekEndDates(startDateTime)
     result = []
     dateFormat = '%Y/%m/%d'
     if isMMDD:
       dateFormat = '%m/%d'
     for theDateTime in weekendDateTimes:
-      result.append( theDateTime.strftime( dateFormat ) )
+      result.append( TenkuraFilterUtil.ensureYearMonth(theDateTime.strftime( dateFormat ), "", isMMDD ))
 
     return result
 
