@@ -864,6 +864,13 @@ class TenkuraFilterUtil:
 
     return result, weeklyDays
 
+  @staticmethod
+  def dateSortUtil(dateString):
+    dateString = TenkuraFilterUtil.ensureYearMonth(dateString)
+    year, month, day = TenkuraFilterUtil.getYYMMDD(dateString)
+    return int(year)*403+ int(month) * 31 + int(day)
+
+
 
 class TenkuraReportUtil:
   @staticmethod
@@ -980,7 +987,6 @@ class TenkuraReportUtil:
 
     return result
 
-
 class MountainFilterUtil:
   @staticmethod
   def openCsv( fileName, delimiter="," ):
@@ -1071,7 +1077,7 @@ if __name__=="__main__":
     weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now() )
     specifiedDate.extend(weekEndDates)
     specifiedDate = list(set(filter(None,specifiedDate)))
-    specifiedDate.sort()
+    specifiedDate.sort(key=TenkuraFilterUtil.dateSortUtil)
 
   mountainWeathers={}
   replaceDispKeys = {}
