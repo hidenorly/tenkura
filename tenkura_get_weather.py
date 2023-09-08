@@ -874,7 +874,7 @@ class TenkuraFilterUtil:
 
 class TenkuraReportUtil:
   @staticmethod
-  def dumpPerMountain(mountainWeathers, disablePrint, noSupplementalInfo, replaceKeys):
+  def dumpPerMountain(mountainWeathers, disablePrint, noSupplementalInfo, replaceKeys, noUrl):
     result = set()
 
     for aMountain, stadndarizedData in mountainWeathers.items():
@@ -910,7 +910,7 @@ class TenkuraReportUtil:
 
         # print misc.
         if "misc" in stadndarizedData:
-          if "url" in stadndarizedData["misc"]:
+          if "url" in stadndarizedData["misc"] and not noUrl:
             ReportUtil.printKeyArray( "url", 20, stadndarizedData["misc"]["url"], "", lPadding=" " )
           if "score" in stadndarizedData["misc"]:
             print( ReportUtil.ljust_jp(" score", 20) + ": " + str(stadndarizedData["misc"]["score"]) )
@@ -924,7 +924,7 @@ class TenkuraReportUtil:
     return result
 
   @staticmethod
-  def dumpPerCategory(standarizedData, noSupplementalInfo, nonDispKeys, replaceKeys, targetDateMMDD):
+  def dumpPerCategory(standarizedData, noSupplementalInfo, nonDispKeys, replaceKeys, targetDateMMDD, noUrl):
     result = set()
     dispKeys = {}
     dispCategory = {}
@@ -974,16 +974,17 @@ class TenkuraReportUtil:
       # display detail information
       print( "" )
       for aDispKey in nonDispKeys:
-        print(aDispKey+":")
-        for aMountainName, flag in displayedMountains.items():
-          theWeather = mountainWeathers[aMountainName]
-          if "misc" in theWeather:
-            theWeather = theWeather["misc"]
-          if aDispKey in theWeather:
-            print( " " + ReportUtil.ljust_jp(aMountainName, 19) + ": " + str( theWeather[aDispKey] ) )
-          if aDispKey == "url" and not noSupplementalInfo:
-            MountainDetailUtil.printMountainDetailInfo( aMountainName )
-        print( "" )
+        if (noUrl and aDispKey!="url") or not noUrl:
+          print(aDispKey+":")
+          for aMountainName, flag in displayedMountains.items():
+            theWeather = mountainWeathers[aMountainName]
+            if "misc" in theWeather:
+              theWeather = theWeather["misc"]
+            if aDispKey in theWeather:
+              print( " " + ReportUtil.ljust_jp(aMountainName, 19) + ": " + str( theWeather[aDispKey] ) )
+            if aDispKey == "url" and not noSupplementalInfo:
+              MountainDetailUtil.printMountainDetailInfo( aMountainName )
+          print( "" )
 
     return result
 
@@ -1057,6 +1058,7 @@ if __name__=="__main__":
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
   parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
   parser.add_argument('-ns', '--noSupplementalInfo', action='store_true', default=False, help='specify if you want to output mountain name only')
+  parser.add_argument('-nu', '--noUrl', action='store_true', default=False, help='specify if you want to disable tenkura url output')
   parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
   parser.add_argument('-r', '--renew', action='store_true', default=False, help='get latest data although cache exists')
 
@@ -1097,9 +1099,9 @@ if __name__=="__main__":
   nonDispKeys = ["url", "score"]
 
   if False == args.compare or args.noDetails:
-    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, args.noSupplementalInfo, replaceDispKeys )
+    mountains = TenkuraReportUtil.dumpPerMountain(mountainWeathers, args.noDetails, args.noSupplementalInfo, replaceDispKeys, args.noUrl )
   else:
-    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, args.noSupplementalInfo, nonDispKeys, replaceDispKeys, str(specifiedDate) )
+    mountains = TenkuraReportUtil.dumpPerCategory(mountainWeathers, args.noSupplementalInfo, nonDispKeys, replaceDispKeys, str(specifiedDate), args.noUrl )
 
   if mountainList:
     for aMountain in mountains:
