@@ -601,18 +601,19 @@ class TenkuraFilterUtil:
       mm1 = mm2
 
     if yy1<yy2:
+
       yy1 = yy2
       if mm1<mm2:
         yy1 = yy1 + 1
 
-    result = str(yy1)+"/"+str(mm1)+"/"+str(dd1)
+    result = "{:04d}".format(yy1)+"/"+"{:02d}".format(mm1)+"/"+"{:02d}".format(dd1)
     if isMMDD:
-      result = str(mm1)+"/"+str(dd1)
+      result = "{:02d}".format(mm1)+"/"+"{:02d}".format(dd1)
     return result
 
 
   @staticmethod
-  def getListOfRangedDates(fromDay, toDay):
+  def getListOfRangedDates(fromDay, toDay, isMMDD=False):
     result = []
 
     fromDay = TenkuraFilterUtil.ensureYearMonth( fromDay, "" )
@@ -622,8 +623,11 @@ class TenkuraFilterUtil:
     toDay = TenkuraFilterUtil.getDateTimeFromYYMMDD( toDay )
 
     theDay = fromDay
+    dateFormat = "%Y/%m/%d"
+    if isMMDD:
+      dateFormat = "%m/%d"
     while theDay <= toDay:
-      result.append( theDay.strftime( "%Y/%m/%d" ) )
+      result.append( theDay.strftime( dateFormat ) )
       theDay = theDay + datetime.timedelta(days=1)
 
     return result
@@ -1076,7 +1080,7 @@ if __name__=="__main__":
 
   specifiedDate = TenkuraFilterUtil.getListOfDates( args.date )
   if args.dateweekend:
-    weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now() )
+    weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now(), False )
     specifiedDate.extend(weekEndDates)
     specifiedDate = list(set(filter(None,specifiedDate)))
     specifiedDate.sort(key=TenkuraFilterUtil.dateSortUtil)
