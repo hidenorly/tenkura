@@ -248,8 +248,12 @@ class TenkuraFilterUtil:
 
 
 class TenkuraGetScoreCommandHandler(PyExecUtil):
+  CLIMBRATESCRIPT="tenkura_get_weather.py"
   def __init__(self, day, args):
-    exec_cmd = "python3 tenkura_get_weather.py -d " + day + " -a A -nu " + args + " | grep A | wc -l"
+    scriptDir = os.path.dirname(os.path.abspath(__file__))
+    climbRateScriptPath = os.path.join(scriptDir, TenkuraGetScoreCommandHandler.CLIMBRATESCRIPT)
+
+    exec_cmd = "python3 "+climbRateScriptPath+" -d " + day + " -a A -nu " + args + " | grep A | wc -l"
     super(TenkuraGetScoreCommandHandler, self).__init__(exec_cmd)
 
   def onCompletion(self):
