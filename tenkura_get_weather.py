@@ -585,7 +585,7 @@ class TenkuraFilterUtil:
 
 
   @staticmethod
-  def ensureYearMonth(yymmdd, refYYMMDD = "", isMMDD=True):
+  def ensureYearMonth(yymmdd, refYYMMDD = "", isMMDD=False):
     if refYYMMDD=="":
       refYYMMDD = datetime.datetime.now().strftime("%Y/%m/%d")
 
@@ -646,7 +646,7 @@ class TenkuraFilterUtil:
         if not aValue:
           result.append( aValue )
         else:
-          result.append( TenkuraFilterUtil.ensureYearMonth( aValue ) )
+          result.append( TenkuraFilterUtil.ensureYearMonth( aValue, "", False ) )
 
     if len(result) == 0:
       result = [ dateOptionString ]
@@ -1084,6 +1084,15 @@ if __name__=="__main__":
     specifiedDate.extend(weekEndDates)
     specifiedDate = list(set(filter(None,specifiedDate)))
     specifiedDate.sort(key=TenkuraFilterUtil.dateSortUtil)
+
+  # ensure MM/DD for display
+  result = []
+  for aDay in specifiedDate:
+    if aDay:
+      result.append( TenkuraFilterUtil.ensureYearMonth(aDay, "", True) )
+    else:
+      result.append( aDay )
+  specifiedDate = result
 
   mountainWeathers={}
   replaceDispKeys = {}
