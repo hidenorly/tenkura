@@ -253,7 +253,7 @@ class TenkuraGetScoreCommandHandler(PyExecUtil):
     scriptDir = os.path.dirname(os.path.abspath(__file__))
     climbRateScriptPath = os.path.join(scriptDir, TenkuraGetScoreCommandHandler.CLIMBRATESCRIPT)
 
-    exec_cmd = "python3 "+climbRateScriptPath+" -d " + day + " -a A -nu " + args + " | grep A | wc -l"
+    exec_cmd = "python3 "+climbRateScriptPath+" -d " + day + " -a A -nu " + args + " | grep ' A' | wc -l"
     super(TenkuraGetScoreCommandHandler, self).__init__(exec_cmd)
 
   def onCompletion(self):
