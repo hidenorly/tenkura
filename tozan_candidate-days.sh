@@ -1,2 +1,4 @@
 #!/bin/bash
-python3 ~/work/tenkura/tenkura_get_candidate_days.py --args="-i ~/desired.csv -e ~/excludes.csv " -dw $@
+MOUNTAINS=`./list-mountains.sh`
+echo $MOUNTAINS
+python3 tenkura_get_candidate_days.py --args="$MOUNTAINS" -dw $@
