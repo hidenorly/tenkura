@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-#   Copyright 2021, 2022, 2023 hidenorly
+#   Copyright 2021, 2022, 2023, 2024 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -124,9 +124,14 @@ class WeatherCache:
     theDay = []
     result.append( url )
 
-    res = requests.get(url)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    tables = soup.find_all("table")#, class_='only-pc')
+    tables = None
+    try:
+      res = requests.get(url)
+      soup = BeautifulSoup(res.text, 'html.parser')
+      tables = soup.find_all("table")#, class_='only-pc')
+    except:
+      print(f'error at {url}')
+
     if None != tables:
       for aTable in tables:
         rows = aTable.find_all("tr")
