@@ -23,6 +23,8 @@ import csv
 import itertools
 import os
 import json
+import subprocess
+import shlex
 
 from bs4 import BeautifulSoup
 
@@ -1053,6 +1055,21 @@ class MountainFilterUtil:
     return result
 
 
+class ExecUtil:
+  @staticmethod
+  def _getOpen():
+    result = "open"
+    if sys.platform.startswith('win'):
+      result = "start"
+    return result
+
+  @staticmethod
+  def open(url):
+    exec_cmd = f'{ExecUtil._getOpen()} {shlex.quote(url)}'
+    result = subprocess.run(exec_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+    return result
+
+
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Parse command line options.')
   parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
@@ -1070,6 +1087,7 @@ if __name__=="__main__":
   parser.add_argument('-nu', '--noUrl', action='store_true', default=False, help='specify if you want to disable tenkura url output')
   parser.add_argument('-m', '--mountainList', action='store_true', default=False, help='specify if you want to output mountain name list')
   parser.add_argument('-r', '--renew', action='store_true', default=False, help='get latest data although cache exists')
+  parser.add_argument('-o', '--openUrl', action='store_true', default=False, help='specify if you want to open the url')
 
   args = parser.parse_args()
 
@@ -1125,3 +1143,11 @@ if __name__=="__main__":
     for aMountain in mountains:
       print( aMountain, end = " " )
     print( "" )
+
+  if args.openUrl:
+    for key, info in mountainWeathers.items():
+      if "misc" in info:
+        if "url" in info["misc"]:
+          url = info["misc"]["url"]
+          ExecUtil.open(url)
+
