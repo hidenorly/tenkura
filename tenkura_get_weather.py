@@ -335,13 +335,18 @@ class TenkuraUtil:
 
 class ReportUtil:
   @staticmethod
-  def ljust_jp(value, length, pad = " "):
+  def get_count(value):
     count_length = 0
     for char in value.encode().decode('utf8'):
       if ord(char) <= 255:
         count_length += 1
       else:
         count_length += 2
+    return count_length
+
+  @staticmethod
+  def ljust_jp(value, length, pad = " "):
+    count_length = ReportUtil.get_count(value)
     return value + pad * (length-count_length)
 
   @staticmethod

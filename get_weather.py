@@ -26,6 +26,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import re
+from tenkura_get_weather import TenkuraFilterUtil
+from tenkura_get_weather import ReportUtil
 
 class WebUtil:
   @staticmethod
@@ -143,16 +145,35 @@ class Weather:
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Specify expected prefectures')
   parser.add_argument('args', nargs='*', help='')
+  parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
 
   args = parser.parse_args()
+
+  specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
 
   driver = WebUtil.get_web_driver()
   weather = Weather()
   result = weather.get_weather()
-  
+
+  # extract max_length for padding
+  max_length={}
   for area, area_info in result.items():
     for day, day_info in area_info.items():
-      print(f"{area}:{day}:{str(day_info)}")
+      for key,value in day_info.items():
+        if not key in max_length:
+          max_length[key]=0
+        max_length[key]=max(max_length[key], ReportUtil.get_count(value))
+
+  # dump the result with specified prefectures and dates
+  for area, area_info in result.items():
+    if not args.args or area in args.args:
+      for day, day_info in area_info.items():
+        _day = TenkuraFilterUtil.ensureYearMonth(day.split("日")[0])
+        if not specifiedDates or (TenkuraFilterUtil.isMatchedDate(_day, specifiedDates)):
+          result = ""
+          for key,value in day_info.items():
+            result=f"{result}   {ReportUtil.ljust_jp(value, max_length[key])}"
+          print(f"{area}\t{ReportUtil.ljust_jp(day,10)}{result}")
 
 
 
