@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 
+import datetime
 import argparse
 import sys
 import subprocess
@@ -146,10 +147,16 @@ if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Specify expected prefectures')
   parser.add_argument('args', nargs='*', help='')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
+  parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
 
   args = parser.parse_args()
 
   specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
+  if args.dateweekend:
+    weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now(), False )
+    specifiedDates.extend(weekEndDates)
+    specifiedDates = list(set(filter(None,specifiedDates)))
+    specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
 
   driver = WebUtil.get_web_driver()
   weather = Weather()
