@@ -142,12 +142,19 @@ class Weather:
 
     return forecast_data
 
+def dump_key_value_online(day_info):
+    result = ""
+    for key,value in day_info.items():
+      result=f"{result}   {ReportUtil.ljust_jp(value, max_length[key])}"
+    return result
+
 
 if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Specify expected prefectures')
   parser.add_argument('args', nargs='*', help='')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
   parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
+  parser.add_argument('-c', '--compare', action='store_true', help='compare per day')
 
   args = parser.parse_args()
 
@@ -172,15 +179,26 @@ if __name__=="__main__":
         max_length[key]=max(max_length[key], ReportUtil.get_count(value))
 
   # dump the result with specified prefectures and dates
+  perDayFilteredResult = {}
   for area, area_info in result.items():
     if not args.args or area in args.args:
       for day, day_info in area_info.items():
         _day = TenkuraFilterUtil.ensureYearMonth(day.split("日")[0])
         if not specifiedDates or (TenkuraFilterUtil.isMatchedDate(_day, specifiedDates)):
-          result = ""
-          for key,value in day_info.items():
-            result=f"{result}   {ReportUtil.ljust_jp(value, max_length[key])}"
-          print(f"{area}\t{ReportUtil.ljust_jp(day,10)}{result}")
+          if not _day in perDayFilteredResult:
+            perDayFilteredResult[_day] = {}
+          perDayFilteredResult[_day][area] = day_info
+          if not args.compare:
+            # normal dump mode
+            result = dump_key_value_online(day_info)
+            print(f"{area}\t{ReportUtil.ljust_jp(day,10)}{result}")
+
+  if args.compare:
+    for day, area_info in perDayFilteredResult.items():
+      print(day)
+      for area, day_info in area_info.items():
+        result = dump_key_value_online(day_info)
+        print(f" {area}{result}")
 
 
 
