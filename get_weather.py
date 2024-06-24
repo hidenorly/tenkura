@@ -81,64 +81,72 @@ class Weather:
         # Extract region blocks
         regions = week_table.find_elements(By.CLASS_NAME, 'contents-wide-table-body')
 
-        for region in regions:
-          _forecast_data = {}
-          # area
-          area_name_elements = region.find_elements(By.CLASS_NAME, 'forecast-area')
-          area_name = None
-          for area_name_element in area_name_elements:
-            area_name = area_name_element.text.strip()
-            if area_name and not area_name in _forecast_data:
-              _forecast_data[area_name] = {}
+        if regions:
+          for region in regions:
+            _forecast_data = {}
+            # area
+            area_name_elements = region.find_elements(By.CLASS_NAME, 'forecast-area')
+            if area_name_elements:
+              area_name = None
+              for area_name_element in area_name_elements:
+                area_name = area_name_element.text.strip()
+                if area_name and not area_name in _forecast_data:
+                  _forecast_data[area_name] = {}
 
-          # dates
-          _dates = [e.text for e in region.find_elements(By.CLASS_NAME, 'forecast-date')]
-          dates = {}
-          for _date in _dates:
-            if _date and not _date in dates:
-              dates[_date] = True
-          dates = dates.keys()
+            # dates
+            dates = {}
+            _dates = [e.text for e in region.find_elements(By.CLASS_NAME, 'forecast-date')]
+            if _dates:
+              for _date in _dates:
+                if _date and not _date in dates:
+                  dates[_date] = True
+            dates = dates.keys()
 
-          # weather
-          weather_elements = region.find_elements(By.CLASS_NAME, 'forecast-icon')
-          weathers = [e.get_attribute("title") for e in weather_elements]
+            # weather
+            weathers = []
+            weather_elements = region.find_elements(By.CLASS_NAME, 'forecast-icon')
+            if weather_elements:
+              weathers = [e.get_attribute("title") for e in weather_elements]
 
-          # Extract precipitation probability
-          precip_prob_elements = region.find_elements(By.XPATH, f".//tr[th[contains(text(), '降水確率')]]")
-          _precip_probs = [e.text for e in precip_prob_elements]
-          precip_probs = []
-          for prob in _precip_probs:
-            if prob:
-              precip_probs.append(prob)
-          
-          # Extract confidence data
-          confidence_elements = region.find_elements(By.XPATH, f".//tr[th[contains(text(), '信頼度')]]")
-          _confidences = [e.text for e in confidence_elements]
-          confidences =[]
-          for confidence in _confidences:
-            if confidence:
-              confidences.append(confidence)
+            # Extract precipitation probability
+            precip_probs = []
+            precip_prob_elements = region.find_elements(By.XPATH, f".//tr[th[contains(text(), '降水確率')]]")
+            if precip_prob_elements:
+              _precip_probs = [e.text for e in precip_prob_elements]
+              for prob in _precip_probs:
+                if prob:
+                  precip_probs.append(prob)
 
-          # Extract temperature
-          temperature_elements = region.find_elements(By.XPATH, f".//tr[th[div[contains(text(), '最低')]]]")
-          _temperatures = [e.text for e in temperature_elements]
-          temperatures = []
-          for temp in _temperatures:
-            if temp:
-              temperatures.append(temp)
+            # Extract confidence data
+            confidences =[]
+            confidence_elements = region.find_elements(By.XPATH, f".//tr[th[contains(text(), '信頼度')]]")
+            if confidence_elements:
+              _confidences = [e.text for e in confidence_elements]
+              for confidence in _confidences:
+                if confidence:
+                  confidences.append(confidence)
 
-          num_of_days = len(dates)
-          for i, area in enumerate(_forecast_data.keys()):
-            for d, day in enumerate(dates):
-              day = re.sub(r'.*\n', '', day)
-              area_info = _forecast_data[area]
-              day_info = area_info[day] = {}
-              day_info["天気"] = weathers[i*num_of_days+d]
-              day_info["降水確率"] = precip_probs[i].split(" ")[d+1]
-              day_info["信頼度"] = confidences[i].split(" ")[d+1]
-              day_info["気温"] = temperatures[i].split('\n')[d+1]
+            # Extract temperature
+            temperatures = []
+            temperature_elements = region.find_elements(By.XPATH, f".//tr[th[div[contains(text(), '最低')]]]")
+            if temperature_elements:
+              _temperatures = [e.text for e in temperature_elements]
+              for temp in _temperatures:
+                if temp:
+                  temperatures.append(temp)
 
-          forecast_data.update(_forecast_data)
+            num_of_days = len(dates)
+            for i, area in enumerate(_forecast_data.keys()):
+              for d, day in enumerate(dates):
+                day = re.sub(r'.*\n', '', day)
+                area_info = _forecast_data[area]
+                day_info = area_info[day] = {}
+                day_info["天気"] = weathers[i*num_of_days+d]
+                day_info["降水確率"] = precip_probs[i].split(" ")[d+1]
+                day_info["信頼度"] = confidences[i].split(" ")[d+1]
+                day_info["気温"] = temperatures[i].split('\n')[d+1]
+
+            forecast_data.update(_forecast_data)
 
     return forecast_data
 
@@ -198,7 +206,7 @@ if __name__=="__main__":
       print(day)
       for area, day_info in area_info.items():
         result = dump_key_value_online(day_info)
-        print(f" {area}{result}")
+        print(f" {area}\t{result}")
 
 
 
