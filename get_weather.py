@@ -29,6 +29,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import re
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import ReportUtil
+from tenkura_get_weather import ExecUtil
 
 class WebUtil:
   @staticmethod
@@ -62,14 +63,17 @@ class Weather:
 
     driver = self._driver
     if driver:
-      driver.get(self.URL)
+      try:
+        driver.get(self.URL)
 
-      WebDriverWait(driver, 10).until(
-          EC.presence_of_element_located((By.ID, 'week-table-container'))
-      )
-      WebDriverWait(driver, 10).until(
-        lambda d: d.find_element(By.ID, 'week-table-container').get_attribute('innerHTML').strip() != ""
-      )
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, 'week-table-container'))
+        )
+        WebDriverWait(driver, 10).until(
+          lambda d: d.find_element(By.ID, 'week-table-container').get_attribute('innerHTML').strip() != ""
+        )
+      except:
+        pass
 
       week_table = driver.find_element(By.ID, 'week-table-container')
       #print(week_table)
@@ -163,6 +167,7 @@ if __name__=="__main__":
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
   parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
   parser.add_argument('-c', '--compare', action='store_true', help='compare per day')
+  parser.add_argument('-o', '--open', action='store_true', default=False, help='specify if you want to open the page')
 
   args = parser.parse_args()
 
@@ -207,6 +212,9 @@ if __name__=="__main__":
       for area, day_info in area_info.items():
         result = dump_key_value_online(day_info)
         print(f" {area}\t{result}")
+
+  if args.open:
+    ExecUtil.open(Weather.URL)
 
 
 
