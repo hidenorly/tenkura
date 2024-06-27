@@ -30,6 +30,8 @@ import re
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import ReportUtil
 from tenkura_get_weather import ExecUtil
+from get_mountain_list import MountainList
+
 
 class WebUtil:
   @staticmethod
@@ -154,6 +156,47 @@ class Weather:
 
     return forecast_data
 
+  supported_areas={
+    "釧路":["北海道"],
+    "旭川":["北海道"],
+    "札幌":["北海道"],
+    "青森":["青森"],
+    "秋田":["秋田"],
+    "仙台":["山形"],
+    "新潟":["宮城"],
+    "金沢":["石川"],
+    "東京":["東京都"],
+    "宇都宮":["栃木"],
+    "長野":["長野"],
+    "名古屋":["愛知"],
+    "大阪":["大阪"],
+    "高松":["香川"],
+    "松江":["島根"],
+    "広島":["広島"],
+    "高知":["高知"],
+    "福岡":["福岡"],
+    "鹿児島":["鹿児島"],
+    "奄美":["沖縄"],
+    "那覇":["沖縄"],
+    "石垣":["沖縄"],
+  }
+
+  def get_nearest_supported_area(area):
+    result = set()
+
+    area = area.split("県")[0]
+
+    for supported_area, areas in Weather.supported_areas.items():
+      if area in areas:
+        result.add(supported_area)
+
+    if not result:
+      result = [area]
+
+    return list(result)
+
+
+
 def dump_key_value_online(day_info):
     result = ""
     for key,value in day_info.items():
@@ -170,6 +213,16 @@ if __name__=="__main__":
   parser.add_argument('-o', '--open', action='store_true', default=False, help='specify if you want to open the page')
 
   args = parser.parse_args()
+  targets = args.args
+  mountain_list = MountainList.get_cached_filtered_mountain_list(targets, True)
+  areas = set()
+  for mountain in mountain_list:
+    for area in mountain["area"].split(" "):
+      for supported_area in Weather.get_nearest_supported_area(area):
+        areas.add( supported_area )
+  targets.extend( list(areas) )
+  if areas:
+    print(f'area={areas}, targets={targets}')
 
   specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
   if args.dateweekend:
@@ -194,7 +247,7 @@ if __name__=="__main__":
   # dump the result with specified prefectures and dates
   perDayFilteredResult = {}
   for area, area_info in result.items():
-    if not args.args or area in args.args:
+    if not targets or area in targets:
       for day, day_info in area_info.items():
         _day = TenkuraFilterUtil.ensureYearMonth(day.split("日")[0])
         if not specifiedDates or (TenkuraFilterUtil.isMatchedDate(_day, specifiedDates)):
