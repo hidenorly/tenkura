@@ -205,14 +205,20 @@ def dump_key_value_online(day_info):
 
 
 if __name__=="__main__":
-  parser = argparse.ArgumentParser(description='Specify expected prefectures')
+  parser = argparse.ArgumentParser(description='Specify expected prefectures or mountain names')
   parser.add_argument('args', nargs='*', help='')
   parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
   parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
   parser.add_argument('-c', '--compare', action='store_true', help='compare per day')
   parser.add_argument('-o', '--open', action='store_true', default=False, help='specify if you want to open the page')
+  parser.add_argument('-l', '--list', action='store_true', default=False, help='List supported area name')
 
   args = parser.parse_args()
+  if args.list:
+    print('supported area names are:')
+    print(f' {" ".join(Weather.supported_areas.keys())}')
+    exit()
+
   targets = args.args
   mountain_list = MountainList.get_cached_filtered_mountain_list(targets, True)
   areas = set()
