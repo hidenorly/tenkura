@@ -119,16 +119,17 @@ class JsonCache:
 class Weather:
   URL = "https://www.jma.go.jp/bosai/forecast/"
 
-  def __init__(self, driver = None):
+  def __init__(self, driver = None, renew = False):
     self.cache = JsonCache(os.path.join(JsonCache.DEFAULT_CACHE_BASE_DIR, "weather"), 1)
     self._driver = driver
+    self.renew = renew
 
   def get_weather(self):
     forecast_data = {}
 
     # try to read from cache
     _result = self.cache.restoreFromCache(self.URL)
-    if _result:
+    if _result and not self.renew:
       return _result
 
     # cache is invalid then read with selenium
@@ -287,6 +288,7 @@ if __name__=="__main__":
   parser.add_argument('-c', '--compare', action='store_true', help='compare per day')
   parser.add_argument('-o', '--open', action='store_true', default=False, help='specify if you want to open the page')
   parser.add_argument('-l', '--list', action='store_true', default=False, help='List supported area name')
+  parser.add_argument('-r', '--renew', action='store_true', default=False, help='Force to read the site (Ignore cache)')
 
   args = parser.parse_args()
   if args.list:
@@ -312,7 +314,7 @@ if __name__=="__main__":
     specifiedDates = list(set(filter(None,specifiedDates)))
     specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
 
-  weather = Weather()
+  weather = Weather(None, args.renew)
   result = weather.get_weather()
 
   # extract max_length for padding
