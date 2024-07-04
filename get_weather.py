@@ -271,6 +271,28 @@ class Weather:
 
     return list(result)
 
+  weather_dic={
+    "晴":"fine",
+    "曇":"cloud",
+    "雨":"rain",
+  }
+
+  def get_standarized_weathers(weather):
+    weathers=set()
+    for key, value in Weather.weather_dic.items():
+      if key in weather:
+        weathers.add(value)
+    return weathers
+
+  def is_acceptable_weather(weather, excludeWeatherConditions):
+    result = True
+    if "天気" in weather:
+      standarized_weathers = Weather.get_standarized_weathers(weather["天気"])
+      for exclude_condition in excludeWeatherConditions:
+        if exclude_condition in standarized_weathers:
+          result = False
+          break
+    return result
 
 
 def dump_key_value_online(day_info):
@@ -289,12 +311,15 @@ if __name__=="__main__":
   parser.add_argument('-o', '--open', action='store_true', default=False, help='specify if you want to open the page')
   parser.add_argument('-l', '--list', action='store_true', default=False, help='List supported area name')
   parser.add_argument('-r', '--renew', action='store_true', default=False, help='Force to read the site (Ignore cache)')
+  parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
 
   args = parser.parse_args()
   if args.list:
     print('supported area names are:')
     print(f' {" ".join(Weather.supported_areas.keys())}')
     exit()
+
+  excludeWeatherConditions = args.excludeWeatherConditions.split(",")
 
   targets = args.args
   mountain_list = MountainList.get_cached_filtered_mountain_list(targets, True)
@@ -335,11 +360,12 @@ if __name__=="__main__":
         if not specifiedDates or (TenkuraFilterUtil.isMatchedDate(_day, specifiedDates)):
           if not _day in perDayFilteredResult:
             perDayFilteredResult[_day] = {}
-          perDayFilteredResult[_day][area] = day_info
-          if not args.compare:
-            # normal dump mode
-            result = dump_key_value_online(day_info)
-            print(f"{area}\t{ReportUtil.ljust_jp(day,10)}{result}")
+          if Weather.is_acceptable_weather(day_info, excludeWeatherConditions):
+            perDayFilteredResult[_day][area] = day_info
+            if not args.compare:
+              # normal dump mode
+              result = dump_key_value_online(day_info)
+              print(f"{area}\t{ReportUtil.ljust_jp(day,10)}{result}")
 
   if args.compare:
     for day, area_info in perDayFilteredResult.items():
