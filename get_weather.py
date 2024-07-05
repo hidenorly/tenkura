@@ -30,6 +30,7 @@ import re
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import ReportUtil
 from tenkura_get_weather import ExecUtil
+from tenkura_get_weather import MountainFilterUtil
 from get_mountain_list import MountainList
 import os
 from datetime import timedelta, datetime
@@ -312,6 +313,8 @@ if __name__=="__main__":
   parser.add_argument('-l', '--list', action='store_true', default=False, help='List supported area name')
   parser.add_argument('-r', '--renew', action='store_true', default=False, help='Force to read the site (Ignore cache)')
   parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
+  parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
+  parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
 
   args = parser.parse_args()
   if args.list:
@@ -321,7 +324,7 @@ if __name__=="__main__":
 
   excludeWeatherConditions = args.excludeWeatherConditions.split(",")
 
-  targets = args.args
+  targets = list(MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include ))
   mountain_list = MountainList.get_cached_filtered_mountain_list(targets, True)
   areas = set()
   for mountain in mountain_list:
