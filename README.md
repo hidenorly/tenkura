@@ -64,3 +64,40 @@ $ python3 tenkura_get_candidate_days.py -dw -d 9/18 --args="-i ~/yama100.csv -e 
 ```
 
 In this example, the the 9/16 should be the most day of the number of candidate mountains.
+
+
+# get_weather.py
+
+Before executing this, do the following (before it, you need to git clone the repo)
+
+the following is an example (you need to modify as the path where you git-clone-ed.):
+
+```
+ln -s ~/work/get_mountain_longitude_latitude/get_mountain_list.py ~/work/tenkura
+```
+
+```
+$ python3 get_weather.py --help
+usage: get_weather.py [-h] [-d DATE] [-dw] [-c] [-o] [-l] [args ...]
+
+Specify expected prefectures or mountain names
+
+positional arguments:
+  args
+
+options:
+  -h, --help            show this help message and exit
+  -d DATE, --date DATE  specify date e.g. 2/14,2/16-2/17
+  -dw, --dateweekend    specify if weekend (Saturday and Sunday)
+  -c, --compare         compare per day
+  -o, --open            specify if you want to open the page
+  -l, --list            List supported area name
+```
+
+```
+$ python3 get_weather.py 釧路
+```
+
+```
+$ python3 get_weather.py 皇海山
+```
