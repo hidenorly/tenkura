@@ -1,21 +1,9 @@
 #!/bin/bash
 
-# preference params
-MAX_ROUTE_TIME_TO_TOZANGUCHI=3:30
-MIN_CLIMB_TIME=3:00
-MAX_CLIMB_TIME=8:00
-MIN_ALTITUDE=800
-MAX_ALTITUDE=2500
-MIN_DISTANCE=4
-MAX_DISTANCE=15
-MAX_ELEVATION=1400
+source config.sh
 
-# script paths and the prompt
+# local params
 TEMP_OUT=~/tmp/park-info.txt
-ROUTE_TIME_TO_TOZANGUCHI=~/work/tozanguchi/get_route_time_to_tozanguchi.py
-RECENT_RECORD=~/work/mountainRecord/get_recent_record2.py
-DETAIL_RECORD=~/work/mountainRecord/get_detail_record.py
-LLM_CLI=~/work/aws_bedrock_playground/claude3-cli.py
 LLM_PROMPT=~/work/openai_playground/better_mountain.json
 
 # mountain candidate enumeration
