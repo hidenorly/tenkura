@@ -1,4 +1,5 @@
 #!/bin/bash
+source config.sh
 MOUNTAINS=`./list-mountains.sh`
 echo $MOUNTAINS
-python3 tenkura_get_candidate_days.py --args="$MOUNTAINS" -dw $@
+python3 $GET_TENKURA_CANDIDATE_DAYS --args="$MOUNTAINS" -dw $@
