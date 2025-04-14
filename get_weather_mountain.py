@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 
+import platform
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -24,99 +25,146 @@ from io import BytesIO
 
 import time
 
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
-tempDriver = webdriver.Chrome(options=options)
-userAgent = tempDriver.execute_script("return navigator.userAgent")
-userAgent = userAgent.replace("headless", "")
-userAgent = userAgent.replace("Headless", "")
+class WeatherNews:
+	def __init__(self):
+		options = webdriver.ChromeOptions()
+		options.add_argument('--headless')
+		tempDriver = webdriver.Chrome(options=options)
+		userAgent = tempDriver.execute_script("return navigator.userAgent")
+		userAgent = userAgent.replace("headless", "")
+		userAgent = userAgent.replace("Headless", "")
 
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')
-options.add_argument(f"user-agent={userAgent}")
-driver = webdriver.Chrome(options=options)
-driver.set_window_size(1000, 1080)
+		dpi_info = tempDriver.execute_script("""
+		    return {
+		        devicePixelRatio: window.devicePixelRatio,
+		        screenWidth: screen.width,
+		        screenHeight: screen.height,
+		        screenAvailWidth: screen.availWidth,
+		        screenAvailHeight: screen.availHeight
+		    };
+		""")
+		self.density = dpi_info["devicePixelRatio"]
+		os_name = platform.system()
+		self.offset_x = 0
+		self.offset_y = 0
+		if os_name == "Darwin":
+			self.offset_x = 0
+			self.offset_y = 90
 
-driver.get("https://weathernews.jp/mountain/")
-wait = WebDriverWait(driver, 2)
+		options = webdriver.ChromeOptions()
+		options.add_argument('--headless')
+		options.add_argument(f"user-agent={userAgent}")
+		self.driver = driver = webdriver.Chrome(options=options)
+		driver.set_window_size(1000, 1080)
 
-
-def zoom_in_map(times=3):
-	zoom_in_button = driver.find_element(By.CSS_SELECTOR, "a.leaflet-control-zoom-in")
-	if not zoom_in_button:
-		zoom_in_button = driver.find_element(By.XPATH, "//a[@class='leaflet-control-zoom-in']")
-	if not zoom_in_button:
-		zoom_in_button = driver.find_element(By.XPATH, "//a[span[text()='+']]")
-	if zoom_in_button:
-		for _ in range(times):
-			zoom_in_button.click()
-			time.sleep(0.1)
-
-def move_map(x_offset, y_offset):
-    map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
-
-    if map_element:
-        actions = ActionChains(driver)
-        actions.click_and_hold(map_element).move_by_offset(x_offset, y_offset).release().perform()
-        time.sleep(0.1)
-    else:
-        print("Unable to find the map")
-
-
-def scroll_until_visible(wday):
-	body = driver.find_element(By.TAG_NAME, "body")
-	while True:
-		button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+	def open(self):
+		driver = self.driver
+		driver.get("https://weathernews.jp/mountain/")
+		self.wait = wait = WebDriverWait(driver, 2)
 		try:
-			# try to click (assume to receive exception)
-			button.click()
-			# not received case menas found it!
-			time.sleep(0.1)
-			return
+			wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.leaflet-control-zoom-in")))
 		except:
 			pass
-		body.send_keys(Keys.ARROW_DOWN)
-		time.sleep(0.1)
+
+		# zoom in
+		self.zoom_in_map(7)
+		self.move_map(-100,-100)
+		self.move_map(-100,-80)
+		self.move_map(-100,0)
+		self.move_map(-50,0)
+
+		# scroll down to find calendar
+		self.scroll_until_visible("土")
 
 
-def cropped_capture(filename, sx, sy, ex, ey):
-	png = driver.get_screenshot_as_png()
+	def zoom_in_map(self, times=3):
+		driver = self.driver
+		zoom_in_button = driver.find_element(By.CSS_SELECTOR, "a.leaflet-control-zoom-in")
+		if not zoom_in_button:
+			zoom_in_button = driver.find_element(By.XPATH, "//a[@class='leaflet-control-zoom-in']")
+		if not zoom_in_button:
+			zoom_in_button = driver.find_element(By.XPATH, "//a[span[text()='+']]")
+		if zoom_in_button:
+			for _ in range(times):
+				zoom_in_button.click()
+				time.sleep(0.1)
 
-	image = Image.open(BytesIO(png))
-	image = image.crop((sx, sy, ex, ey))
-	image.save(filename)
-
-
-def select_date_and_capture(wday, filename):
-	button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
-	if button:
-		button.click()
-		time.sleep(1)
+	def move_map(self, x_offset, y_offset):
+		driver = self.driver
+		wait = self.wait
 		map_element = None
-		#map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+		try:
+			map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+		except:
+			pass
+
 		if map_element:
-			map_element.screenshot(filename)
+			actions = ActionChains(driver)
+			actions.click_and_hold(map_element).move_by_offset(x_offset, y_offset).release().perform()
+			time.sleep(0.1)
 		else:
-			#driver.save_screenshot(filename)
-			cropped_capture(filename, 26,253+198+78, 1134+10,1200+198+78*3)
+			print("Unable to find the map")
 
 
-# wait
-wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.leaflet-control-zoom-in")))
+	def scroll_until_visible(self, wday):
+		driver = self.driver
+		wait = self.wait
+		body = driver.find_element(By.TAG_NAME, "body")
+		button = None
+		while True:
+			try:
+				button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+				# try to click (assume to receive exception)
+				button.click()
+				# not received case menas found it!
+				time.sleep(0.1)
+				return
+			except:
+				pass
+			body.send_keys(Keys.ARROW_DOWN)
+			time.sleep(0.1)
 
-# zoom in
-zoom_in_map(7)
-move_map(-100,-100)
-move_map(-100,-80)
-move_map(-100,0)
-move_map(-50,0)
 
-# scroll down to find calendar
-scroll_until_visible("土")
+	def cropped_capture(self, filename, sx, sy, ex, ey):
+		driver = self.driver
+		png = driver.get_screenshot_as_png()
 
-# capture specified date's weather
-select_date_and_capture("土", "saturday.png")
-select_date_and_capture("日", "sunday.png")
+		image = Image.open(BytesIO(png))
+		image = image.crop((sx, sy, ex, ey))
+		image.save(filename)
 
-# finalize
-driver.quit()
+
+	def select_date_and_capture(self, wday, filename):
+		driver = self.driver
+		wait = self.wait
+		button = None
+		try:
+			button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+		except:
+			pass
+		if button:
+			button.click()
+			time.sleep(1)
+			map_element = None
+			#map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+			if map_element:
+				map_element.screenshot(filename)
+			else:
+				#driver.save_screenshot(filename)
+				self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
+				#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
+
+	def get_weathers(self, requests):
+		for wday, filename in requests.items():
+			self.select_date_and_capture(wday, filename)
+
+	def close(self):
+		self.wait = None
+		self.driver.quit()
+		self.driver = None
+
+if __name__=="__main__":
+	news = WeatherNews()
+	news.open()
+	news.get_weathers({"土":"saturday.png", "日":"sunday.png"} )
+	news.close()
