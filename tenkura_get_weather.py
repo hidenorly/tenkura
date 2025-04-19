@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-#   Copyright 2021, 2022, 2023, 2024 hidenorly
+#   Copyright 2021, 2022, 2023, 2024,2025 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -23,14 +23,13 @@ import csv
 import itertools
 import os
 import json
-import subprocess
-import shlex
 import time
 
 from bs4 import BeautifulSoup
 
 import mountainDic
 import mountainInfoDic
+from WeatherUtil import ExecUtil, ReportUtil
 
 class MountainDicUtil:
   mountainDic = mountainDic.getMountainDic()
@@ -333,36 +332,7 @@ class TenkuraUtil:
     return TenkuraUtil.filterWeather(result)
 
 
-class ReportUtil:
-  @staticmethod
-  def get_count(value):
-    count_length = 0
-    for char in value.encode().decode('utf8'):
-      if ord(char) <= 255:
-        count_length += 1
-      else:
-        count_length += 2
-    return count_length
 
-  @staticmethod
-  def ljust_jp(value, length, pad = " "):
-    count_length = ReportUtil.get_count(value)
-    return value + pad * (length-count_length)
-
-  @staticmethod
-  def frontPaddingStr(str, length):
-    thePaddingLength = length - len(str)
-    return " "*thePaddingLength + str
-
-  @staticmethod
-  def printKeyArray(key, keyLength, arrayData, padding=" ", lPadding=""):
-    key = ReportUtil.ljust_jp(key, keyLength-len(lPadding))
-    val = ""
-    for aData in arrayData:
-      if aData == "":
-        aData=padding
-      val = val + aData + padding
-    print( lPadding + key + ": " + val )
 
 
 class TenkuraScoreUtil:
@@ -1061,19 +1031,6 @@ class MountainFilterUtil:
     return result
 
 
-class ExecUtil:
-  @staticmethod
-  def _getOpen():
-    result = "open"
-    if sys.platform.startswith('win'):
-      result = "start"
-    return result
-
-  @staticmethod
-  def open(url):
-    exec_cmd = f'{ExecUtil._getOpen()} {shlex.quote(url)}'
-    result = subprocess.run(exec_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-    return result
 
 
 if __name__=="__main__":

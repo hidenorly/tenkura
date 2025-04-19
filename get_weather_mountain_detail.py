@@ -21,6 +21,7 @@ import time
 import datetime
 from bs4 import BeautifulSoup
 from tenkura_get_weather import TenkuraFilterUtil
+from mountain_weather_dic import mountain_weather_dic
 
 
 class MountainWeather:
@@ -237,12 +238,44 @@ class MountainWeather:
         self.driver = None
 
 def isMatchedDate(the_day, target_YYMMDDs):
+    if not target_YYMMDDs or target_YYMMDDs == ['']:
+        return True
     the_day = int(the_day)
     for targetYYMMDD in target_YYMMDDs:
         pos = targetYYMMDD.rfind("/")
         if pos!=-1:
             day = int(targetYYMMDD[pos+1:])
             if the_day == day:
+                return True
+    return False
+
+def get_weather_url_info_by_name(mountain_name):
+    for url, infos in mountain_weather_dic.items():
+        if mountain_name in infos.keys():
+            return url, infos[mountain_name]
+        else:
+            for candidate_mountain_name in infos.keys():
+                if candidate_mountain_name.find(mountain_name)!=-1:
+                    return url, infos[candidate_mountain_name]
+    return None, None
+
+def get_listurl_url_by_name(mountain_names):
+    urls = set()
+    results = {}
+    for mountain_name in mountain_names:
+        url, info = get_weather_url_info_by_name(mountain_name)
+        if url!=None:
+            urls.add(url)
+        if info!=None:
+            results[mountain_name] = info
+    return urls, results
+
+def is_matched_mountain(mountain_name, mountain_names):
+    if mountain_name in mountain_names:
+        return True
+    else:
+        for a_mountain_name in mountain_names:
+            if mountain_name.find(a_mountain_name)!=-1:
                 return True
     return False
 
@@ -262,15 +295,22 @@ if __name__=="__main__":
         specifiedDates = list(set(filter(None,specifiedDates)))
         specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
 
+    urls, infoDic = get_listurl_url_by_name(args.args)
+    #print(f"urls={str(urls)}")
+    #print(f"infoDic={str(infoDic)}")
+    #print(str(specifiedDates))
+
     weather = MountainWeather()
-    results = weather.get_all_mountain()
     filtered_results = {}
-    for name, result in results.items():
-        for aWeather in result["weather"]:
-            if isMatchedDate(aWeather["day"], specifiedDates):
-                if not name in filtered_results:
-                    filtered_results[name] = []
-                filtered_results[name].append(aWeather)
+    for list_url in urls:
+        results = weather.get_all_mountain(list_url)
+        for name, result in results.items():
+            if is_matched_mountain(name, args.args):
+                for aWeather in result["weather"]:
+                    if isMatchedDate(aWeather["day"], specifiedDates):
+                        if not name in filtered_results:
+                            filtered_results[name] = []
+                        filtered_results[name].append(aWeather)
 
     for name, weathers in filtered_results.items():
         print( f'{name} ({results[name]["url"]})' )
