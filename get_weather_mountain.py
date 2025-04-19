@@ -15,234 +15,156 @@
 
 import platform
 from selenium import webdriver
-import urllib.parse
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+from PIL import Image
+from io import BytesIO
 
 import time
 
-from bs4 import BeautifulSoup
+class WeatherNews:
+	def __init__(self):
+		options = webdriver.ChromeOptions()
+		options.add_argument('--headless')
+		tempDriver = webdriver.Chrome(options=options)
+		userAgent = tempDriver.execute_script("return navigator.userAgent")
+		userAgent = userAgent.replace("headless", "")
+		userAgent = userAgent.replace("Headless", "")
+
+		dpi_info = tempDriver.execute_script("""
+		    return {
+		        devicePixelRatio: window.devicePixelRatio,
+		        screenWidth: screen.width,
+		        screenHeight: screen.height,
+		        screenAvailWidth: screen.availWidth,
+		        screenAvailHeight: screen.availHeight
+		    };
+		""")
+		self.density = dpi_info["devicePixelRatio"]
+		os_name = platform.system()
+		self.offset_x = 0
+		self.offset_y = 0
+		if os_name == "Darwin":
+			self.offset_x = 0
+			self.offset_y = 90
+
+		options = webdriver.ChromeOptions()
+		options.add_argument('--headless')
+		options.add_argument(f"user-agent={userAgent}")
+		self.driver = driver = webdriver.Chrome(options=options)
+		driver.set_window_size(1000, 1080)
+
+	def open(self):
+		driver = self.driver
+		driver.get("https://weathernews.jp/mountain/")
+		self.wait = wait = WebDriverWait(driver, 2)
+		try:
+			wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.leaflet-control-zoom-in")))
+		except:
+			pass
+
+		# zoom in
+		self.zoom_in_map(7)
+		self.move_map(-100,-100)
+		self.move_map(-100,-80)
+		self.move_map(-100,0)
+		self.move_map(-50,0)
+
+		# scroll down to find calendar
+		self.scroll_until_visible("土")
 
 
-class MountainWeather:
-    weather_string = {
-        "100": "fine",
-        "101": "fine_cloud",
-        "102": "fine_rain",
-        "103": "fine_rain",
-        "104": "fine_snow",
-        "105": "fine_snow",
-        "106": "fine_rain",
-        "107": "fine_rain",
-        "108": "fine_rain",
-        "110": "fine_cloud",
-        "111": "fine_cloud",
-        "112": "fine_rain",
-        "113": "fine_rain",
-        "114": "fine_rain",
-        "115": "fine_snow",
-        "116": "fine_rain",
-        "117": "fine_snow",
-        "118": "fine_rain",
-        "119": "fine_rain",
-        "120": "fine_rain",
-        "121": "fine_cloud",
-        "122": "fine_rain",
-        "123": "fine",
-        "124": "fine",
-        "125": "fine_rain",
-        "126": "fine_rain",
-        "127": "fine_rain",
-        "128": "fine_rain",
-        "129": "fine_rain",
-        "130": "fine",
-        "131": "fine",
-        "132": "fine_cloud",
-        "140": "fine_rain",
-        "160": "fine_snow",
-        "170": "fine_snow",
-        "181": "fine_snow",
+	def zoom_in_map(self, times=3):
+		driver = self.driver
+		zoom_in_button = driver.find_element(By.CSS_SELECTOR, "a.leaflet-control-zoom-in")
+		if not zoom_in_button:
+			zoom_in_button = driver.find_element(By.XPATH, "//a[@class='leaflet-control-zoom-in']")
+		if not zoom_in_button:
+			zoom_in_button = driver.find_element(By.XPATH, "//a[span[text()='+']]")
+		if zoom_in_button:
+			for _ in range(times):
+				zoom_in_button.click()
+				time.sleep(0.1)
 
-        "200": "cloud",
-        "201": "cloud_fine",
-        "202": "cloud_rain",
-        "203": "cloud_rain",
-        "204": "cloud_snow",
-        "205": "cloud_snow",
-        "206": "cloud_rain",
-        "207": "cloud_rain",
-        "208": "cloud_rain",
-        "209": "cloud",
-        "210": "cloud_fine",
-        "211": "cloud_fine",
-        "212": "cloud_rain",
-        "213": "cloud_rain",
-        "214": "cloud_rain",
-        "215": "cloud_snow",
-        "216": "cloud_snow",
-        "217": "cloud_snow",
-        "218": "cloud_rain",
-        "219": "cloud_rain",
-        "220": "cloud_rain",
-        "221": "cloud_rain",
-        "222": "cloud_rain",
-        "223": "cloud_fine",
-        "224": "cloud_rain",
-        "225": "cloud_rain",
-        "226": "cloud_rain",
-        "227": "cloud_rain",
-        "228": "cloud_snow",
-        "229": "cloud_snow",
-        "230": "cloud_snow",
-        "231": "cloud",
-        "240": "cloud_rain",
-        "250": "cloud_snow",
-        "260": "cloud_snow",
-        "270": "cloud_snow",
-        "281": "cloud_snow",
+	def move_map(self, x_offset, y_offset):
+		driver = self.driver
+		wait = self.wait
+		map_element = None
+		try:
+			map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+		except:
+			pass
 
-        "300": "rain",
-        "301": "rain_fine",
-        "302": "rain_rain",
-        "303": "rain_snow",
-        "304": "rain",
-        "306": "rain",
-        "308": "rain",
-        "309": "rain_snow",
-        "311": "rain_fine",
-        "313": "rain_cloud",
-        "314": "rain_snow",
-        "315": "rain_snow",
-        "316": "rain_fine",
-        "317": "rain_cloud",
-        "320": "rain_fine",
-        "321": "rain_cloud",
-        "322": "rain_snow",
-        "323": "rain_fine",
-        "324": "rain_fine",
-        "325": "rain_fine",
-        "326": "rain_snow",
-        "327": "rain_snow",
-        "328": "rain",
-        "329": "rain",
-        "340": "snow",
-        "350": "rain",
-        "361": "snow_fine",
-        "371": "snow_cloud",
-
-        "400": "snow",
-        "401": "snow_fine",
-        "402": "snow_cloud",
-        "403": "snow_rain",
-        "405": "snow",
-        "406": "snow",
-        "407": "snow",
-        "409": "snow_rain",
-        "411": "snow_fine",
-        "420": "snow_fine",
-        "421": "snow_cloud",
-        "422": "snow_rain",
-        "423": "snow_rain",
-        "424": "snow_rain",
-        "425": "snow",
-        "426": "snow",
-        "427": "snow",
-        "430": "snow",
-        "450": "snow",
-
-        "500": "fine",
-        "550": "fine",
-    }
-
-    def __init__(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        tempDriver = webdriver.Chrome(options=options)
-        userAgent = tempDriver.execute_script("return navigator.userAgent")
-        userAgent = userAgent.replace("headless", "")
-        userAgent = userAgent.replace("Headless", "")
-
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument(f"user-agent={userAgent}")
-        self.driver = driver = webdriver.Chrome(options=options)
-        driver.set_window_size(1920, 1080)
+		if map_element:
+			actions = ActionChains(driver)
+			actions.click_and_hold(map_element).move_by_offset(x_offset, y_offset).release().perform()
+			time.sleep(0.1)
+		else:
+			print("Unable to find the map")
 
 
-    def get_all_mountain(self, url = "https://weathernews.jp/mountain/hokkaido/?target=trailhead"):
-        results = {}
-        driver = self.driver
-        driver.get(url)
-        base_url = driver.current_url
-        time.sleep(3)
+	def scroll_until_visible(self, wday):
+		driver = self.driver
+		wait = self.wait
+		body = driver.find_element(By.TAG_NAME, "body")
+		button = None
+		while True:
+			try:
+				button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+				# try to click (assume to receive exception)
+				button.click()
+				# not received case menas found it!
+				time.sleep(0.1)
+				return
+			except:
+				pass
+			body.send_keys(Keys.ARROW_DOWN)
+			time.sleep(0.1)
 
-        html = driver.page_source
-        soup = BeautifulSoup(html, 'html.parser')
 
-        # retreive all of calendar
-        calendars = soup.select('div.calendar.is-fixed.is-web')
+	def cropped_capture(self, filename, sx, sy, ex, ey):
+		driver = self.driver
+		png = driver.get_screenshot_as_png()
 
-        for calendar in calendars:
-            result = {}
-            # parse area
-            area_name = calendar.select_one('.head-text').get_text(strip=True)
+		image = Image.open(BytesIO(png))
+		image = image.crop((sx, sy, ex, ey))
+		image.save(filename)
 
-            # parse date and week header
-            date_blocks = calendar.select('.head .date')
-            date_list = []
-            for date in date_blocks:
-                if date.get('style') == 'display: none;':
-                    continue
-                day = date.select_one('.date-text').get_text(strip=True)
-                wday = date.select_one('.date-wday').get_text(strip=True)
-                date_list.append({'day': day, 'wday': wday})
 
-            # parse each mountain
-            rows = calendar.select('.body a.row')
-            for row in rows:
-                name = row.select_one('.mountain .name').get_text(strip=True)
-                relative_url = row.get('href')
-                absolute_url = urllib.parse.urljoin(base_url, relative_url)
-                result = {
-                    "name": name,
-                    "url" : absolute_url,
-                    "weather": []
-                }
-                temps = row.select('.week')
-                for i, week in enumerate(temps[:len(date_list)]):  # fit to number of date_list
-                    wx_img = week.select_one('.wx img')
-                    high = week.select_one('.high').get_text(strip=True)
-                    low = week.select_one('.low').get_text(strip=True)
-                    icon_url = wx_img['src'] if wx_img else None
-                    pos1 = icon_url.rfind("/")
-                    pos2 = icon_url.rfind(".")
-                    weather_id = None
-                    if pos1!=-1 and pos2!=-1:
-                        weather_id = icon_url[pos1+1:pos2]
-                        if weather_id in self.weather_string:
-                            icon_url = self.weather_string[weather_id]
-                    result["weather"].append({
-                        "day" : date_list[i]['day'],
-                        "wday" : date_list[i]['wday'],
-                        "temperature_max" : high,
-                        "temperature_min" : low,
-                        "weather" : icon_url
-                    })
-                results[name] = result
-                    #print(f"    {date_list[i]['day']}({date_list[i]['wday']}): {high}度/{low}度, 天気: {icon_url}")
-        return results
+	def select_date_and_capture(self, wday, filename):
+		driver = self.driver
+		wait = self.wait
+		button = None
+		try:
+			button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+		except:
+			pass
+		if button:
+			button.click()
+			time.sleep(1)
+			map_element = None
+			#map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+			if map_element:
+				map_element.screenshot(filename)
+			else:
+				#driver.save_screenshot(filename)
+				self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
+				#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
 
-    def close(self):
-        self.wait = None
-        self.driver.quit()
-        self.driver = None
+	def get_weathers(self, requests):
+		for wday, filename in requests.items():
+			self.select_date_and_capture(wday, filename)
+
+	def close(self):
+		self.wait = None
+		self.driver.quit()
+		self.driver = None
 
 if __name__=="__main__":
-    weather = MountainWeather()
-    results = weather.get_all_mountain()
-    for name, result in results.items():
-        print( f'{name} ({result["url"]})' )
-        for aWeather in result["weather"]:
-            print(f"{aWeather["day"]}({aWeather["wday"]}) {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度, 天気: {aWeather["weather"]}")
-    weather.close()
-
-
-
+	news = WeatherNews()
+	news.open()
+	news.get_weathers({"土":"saturday.png", "日":"sunday.png"} )
+	news.close()
