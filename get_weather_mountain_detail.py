@@ -21,7 +21,10 @@ import time
 import datetime
 from bs4 import BeautifulSoup
 from tenkura_get_weather import TenkuraFilterUtil
-from mountain_weather_dic import mountain_weather_dic
+try:
+    from mountain_weather_dic import mountain_weather_dic
+except:
+    pass
 
 
 class MountainWeather:
@@ -295,7 +298,13 @@ if __name__=="__main__":
         specifiedDates = list(set(filter(None,specifiedDates)))
         specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
 
-    urls, infoDic = get_listurl_url_by_name(args.args)
+    urls = set()
+    urls.add("https://weathernews.jp/mountain/kanto/?target=trailhead")
+    infoDic = {}
+    try:
+        urls, infoDic = get_listurl_url_by_name(args.args)
+    except:
+        pass
     #print(f"urls={str(urls)}")
     #print(f"infoDic={str(infoDic)}")
     #print(str(specifiedDates))
