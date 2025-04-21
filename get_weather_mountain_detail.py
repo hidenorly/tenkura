@@ -282,6 +282,10 @@ def is_matched_mountain(mountain_name, mountain_names):
                 return True
     return False
 
+def is_matched_weather(weather, acceptableWeatherConditions):
+    if weather in acceptableWeatherConditions:
+        return acceptableWeatherConditions[weather]
+    return True
 
 
 if __name__=="__main__":
@@ -289,7 +293,11 @@ if __name__=="__main__":
     parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
     parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
     parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
+    parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
+    parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
     args = parser.parse_args()
+
+    acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
     specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
     if args.dateweekend:
@@ -308,6 +316,8 @@ if __name__=="__main__":
     #print(f"urls={str(urls)}")
     #print(f"infoDic={str(infoDic)}")
     #print(str(specifiedDates))
+    filtered_mountains = set()
+
 
     weather = MountainWeather()
     filtered_results = {}
@@ -316,15 +326,21 @@ if __name__=="__main__":
         for name, result in results.items():
             if is_matched_mountain(name, args.args):
                 for aWeather in result["weather"]:
-                    if isMatchedDate(aWeather["day"], specifiedDates):
+                    if isMatchedDate(aWeather["day"], specifiedDates) and is_matched_weather(aWeather["weather"], acceptableWeatherConditions):
                         if not name in filtered_results:
                             filtered_results[name] = []
                         filtered_results[name].append(aWeather)
+                        filtered_mountains.add(name)
 
-    for name, weathers in filtered_results.items():
-        print( f'{name} ({results[name]["url"]})' )
-        for aWeather in weathers:
-            print(f"{aWeather["day"]}({aWeather["wday"]}) {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度, 天気: {aWeather["weather"]}")
+    if args.noDetails:
+        # name only
+        print(" ".join(list(filtered_mountains)))
+    else:
+        # normal dump
+        for name, weathers in filtered_results.items():
+            print( f'{name} ({results[name]["url"]})' )
+            for aWeather in weathers:
+                print(f"{aWeather["day"]}({aWeather["wday"]}) {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度, 天気: {aWeather["weather"]}")
 
     weather.close()
 
