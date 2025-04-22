@@ -21,6 +21,7 @@ import time
 import datetime
 from bs4 import BeautifulSoup
 from tenkura_get_weather import TenkuraFilterUtil
+from tenkura_get_weather import MountainFilterUtil
 try:
     from mountain_weather_dic import mountain_weather_dic
 except:
@@ -106,7 +107,7 @@ class MountainWeather:
 
         "300": "rain",
         "301": "rain_fine",
-        "302": "rain_rain",
+        "302": "rain",
         "303": "rain_snow",
         "304": "rain",
         "306": "rain",
@@ -295,8 +296,11 @@ if __name__=="__main__":
     parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
     parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
     parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
+    parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
+    parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     args = parser.parse_args()
 
+    mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
     acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
     specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
@@ -310,7 +314,7 @@ if __name__=="__main__":
     urls.add("https://weathernews.jp/mountain/kanto/?target=trailhead")
     infoDic = {}
     try:
-        urls, infoDic = get_listurl_url_by_name(args.args)
+        urls, infoDic = get_listurl_url_by_name(mountains)
     except:
         pass
     #print(f"urls={str(urls)}")
@@ -321,10 +325,12 @@ if __name__=="__main__":
 
     weather = MountainWeather()
     filtered_results = {}
+    unified_results = {}
     for list_url in urls:
         results = weather.get_all_mountain(list_url)
+        unified_results.update(results)
         for name, result in results.items():
-            if is_matched_mountain(name, args.args):
+            if is_matched_mountain(name, mountains):
                 for aWeather in result["weather"]:
                     if isMatchedDate(aWeather["day"], specifiedDates) and is_matched_weather(aWeather["weather"], acceptableWeatherConditions):
                         if not name in filtered_results:
@@ -338,7 +344,7 @@ if __name__=="__main__":
     else:
         # normal dump
         for name, weathers in filtered_results.items():
-            print( f'{name} ({results[name]["url"]})' )
+            print( f'{name} ({unified_results[name]["url"]})' )
             for aWeather in weathers:
                 print(f"{aWeather["day"]}({aWeather["wday"]}) {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度, 天気: {aWeather["weather"]}")
 
