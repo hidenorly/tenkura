@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 
+import os
 import platform
 from selenium import webdriver
 import urllib.parse
@@ -26,6 +27,8 @@ try:
     from mountain_weather_dic import mountain_weather_dic
 except:
     pass
+
+from WeatherUtil import JsonCache, WebUtil, ExecUtil
 
 
 class MountainWeather:
@@ -159,22 +162,18 @@ class MountainWeather:
     }
 
     def __init__(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        tempDriver = webdriver.Chrome(options=options)
-        userAgent = tempDriver.execute_script("return navigator.userAgent")
-        userAgent = userAgent.replace("headless", "")
-        userAgent = userAgent.replace("Headless", "")
-
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument(f"user-agent={userAgent}")
-        self.driver = driver = webdriver.Chrome(options=options)
-        driver.set_window_size(1920, 1080)
+        self.driver = None
+        self.cache = JsonCache(os.path.join(JsonCache.DEFAULT_CACHE_BASE_DIR, "weather_detail"), 1)
 
 
     def get_all_mountain(self, url = "https://weathernews.jp/mountain/hokkaido/?target=trailhead"):
+        _result = self.cache.restoreFromCache(url)
+        if _result:
+          return _result
+
         results = {}
+        if not self.driver:
+            self.driver = WebUtil.get_web_driver()
         driver = self.driver
         driver.get(url)
         base_url = driver.current_url
@@ -234,11 +233,15 @@ class MountainWeather:
                     })
                 results[name] = result
                     #print(f"    {date_list[i]['day']}({date_list[i]['wday']}): {high}度/{low}度, 天気: {icon_url}")
+
+        if results:
+            self.cache.storeToCache(url, results)
         return results
 
     def close(self):
         self.wait = None
-        self.driver.quit()
+        if self.driver:
+            self.driver.quit()
         self.driver = None
 
 def isMatchedDate(the_day, target_YYMMDDs):
