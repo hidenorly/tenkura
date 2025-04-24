@@ -28,7 +28,7 @@ try:
 except:
     pass
 
-from WeatherUtil import JsonCache, WebUtil, ExecUtil
+from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil
 
 
 class MountainWeather:
@@ -301,6 +301,7 @@ if __name__=="__main__":
     parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
+    parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
     args = parser.parse_args()
 
     mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
@@ -346,10 +347,27 @@ if __name__=="__main__":
         print(" ".join(list(filtered_mountains)))
     else:
         # normal dump
-        for name, weathers in filtered_results.items():
-            print( f'{name} ({unified_results[name]["url"]})' )
-            for aWeather in weathers:
-                print(f"{aWeather["day"]}({aWeather["wday"]}) {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度, 天気: {aWeather["weather"]}")
+        if args.compare:
+            # per-day
+            for aDay in specifiedDates:
+                isDayOutput = False
+                pos = aDay.rfind("/")
+                iDay = 0
+                if pos!=-1:
+                    iDay = int(aDay[pos+1:])
+                for name, weathers in filtered_results.items():
+                    for aWeather in weathers:
+                        if int(aWeather["day"])==iDay:
+                            if not isDayOutput:
+                                print(f"\n{aWeather["day"]}({aWeather["wday"]}):")
+                                isDayOutput = True
+                            print(f"\t{ReportUtil.ljust_jp(name, 15)}\t{ReportUtil.ljust_jp(aWeather["weather"], 14)}\t{aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度")
+        else:
+            # per-mountain
+            for name, weathers in filtered_results.items():
+                print( f'{ReportUtil.ljust_jp(name, 14)} ({unified_results[name]["url"]})' )
+                for aWeather in weathers:
+                    print(f"\t{aWeather["day"]}({aWeather["wday"]}) {ReportUtil.ljust_jp(aWeather["weather"], 14)} {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度")
 
     weather.close()
 
