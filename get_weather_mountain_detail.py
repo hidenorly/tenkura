@@ -303,6 +303,7 @@ if __name__=="__main__":
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
     parser.add_argument('-s', '--stat', action='store_true', help='dump count of mountains per day. Should use with -w')
+    parser.add_argument('-o', '--openUrl', action='store_true', default=False, help='specify if you want to open the url')
     args = parser.parse_args()
 
     mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
@@ -318,6 +319,7 @@ if __name__=="__main__":
     urls = set()
     urls.add("https://weathernews.jp/mountain/kanto/?target=trailhead")
     infoDic = {}
+    open_urls  = set()
     try:
         urls, infoDic = get_listurl_url_by_name(mountains)
     except:
@@ -366,6 +368,7 @@ if __name__=="__main__":
                                     print(f'\n{aWeather["day"]}({aWeather["wday"]}):')
                                     isDayOutput = True
                                 print(f'\t{ReportUtil.ljust_jp(name, 15)}\t{ReportUtil.ljust_jp(aWeather["weather"], 14)}\t{aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度')
+                                open_urls.add(unified_results[name]["url"])
                 if args.stat:
                     print(f'{aDay} : {count}')
         else:
@@ -374,8 +377,16 @@ if __name__=="__main__":
                 print( f'{ReportUtil.ljust_jp(name, 14)} ({unified_results[name]["url"]})' )
                 for aWeather in weathers:
                     print(f'\t{aWeather["day"]}({aWeather["wday"]}) {ReportUtil.ljust_jp(aWeather["weather"], 14)} {aWeather["temperature_max"]}度/{aWeather["temperature_min"]}度')
+                    open_urls.add(unified_results[name]["url"])
 
     weather.close()
 
+    if args.openUrl:
+        n = 0
+        for an_url in open_urls:
+            n = n + 1
+            if n>2:
+                time.sleep(0.5)
+            ExecUtil.open(an_url)
 
 
