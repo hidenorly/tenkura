@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 
+import argparse
 import platform
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -133,20 +134,42 @@ class WeatherNews:
 		image = image.crop((sx, sy, ex, ey))
 		image.save(filename)
 
+	WEEK_FILENAME = {
+		"月" : "monday.png",
+		"火" : "tuesday.png",
+		"水" : "wednesday.png",
+		"木" : "thursday.png",
+		"金" : "friday.png",
+		"土" : "saturday.png",
+		"日" : "sunday.png"
+	}
 
-	def select_date_and_capture(self, wday, filename):
+	def select_date_and_capture(self, wday, filename = None):
 		driver = self.driver
 		wait = self.wait
 		button = None
 		try:
-			button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+			#button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+			xpath = (
+				f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]"
+			)
+			button = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 		except:
 			pass
 		if button:
+			date_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
+			wday_text = button.find_element(By.CSS_SELECTOR, ".week-item-wday").text.strip()
+			day_only = date_text.replace(wday_text, "").strip()
+			#print(f"Date: {day_only}, Week: {wday_text}")	
 			button.click()
 			time.sleep(1)
 			map_element = None
 			#map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+			if not filename:
+				if wday_text in self.WEEK_FILENAME:
+					filename = self.WEEK_FILENAME[wday_text]
+				else:
+					filename = "weather_map.png"
 			if map_element:
 				map_element.screenshot(filename)
 			else:
@@ -158,13 +181,31 @@ class WeatherNews:
 		for wday, filename in requests.items():
 			self.select_date_and_capture(wday, filename)
 
+	def get_weathers_map(self, wdays):
+		for wday in wdays:
+			self.select_date_and_capture(wday)
+
 	def close(self):
 		self.wait = None
 		self.driver.quit()
 		self.driver = None
 
+
 if __name__=="__main__":
+	parser = argparse.ArgumentParser(description='Parse command line options.')
+	parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
+	parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
+	parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
+	args = parser.parse_args()
+
+	target_dates = set()
+	if args.date:
+	    target_dates.update(str(args.date).split(","))
+	if args.dateweekend:
+	    target_dates.update(["土", "日"])
+
 	news = WeatherNews()
 	news.open()
-	news.get_weathers({"土":"saturday.png", "日":"sunday.png"} )
+	#news.get_weathers( {"土":"saturday.png", "日":"sunday.png"} )
+	news.get_weathers_map(target_dates)
 	news.close()
