@@ -15,6 +15,8 @@
 
 import argparse
 import platform
+import time
+import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -23,8 +25,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from PIL import Image
 from io import BytesIO
+from tenkura_get_weather import TenkuraFilterUtil
 
-import time
 
 class WeatherNews:
 	def __init__(self):
@@ -198,11 +200,18 @@ if __name__=="__main__":
 	parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
 	args = parser.parse_args()
 
-	target_dates = set()
-	if args.date:
-	    target_dates.update(str(args.date).split(","))
+	specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
 	if args.dateweekend:
-	    target_dates.update(["土", "日"])
+		weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now(), False )
+		specifiedDates.extend(weekEndDates)
+		specifiedDates = list(set(filter(None,specifiedDates)))
+		specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
+
+	target_dates = []
+	for _day in specifiedDates:
+		pos = _day.rfind("/")
+		if pos!=-1:
+			target_dates.append(_day[pos+1:])
 
 	news = WeatherNews()
 	news.open()
