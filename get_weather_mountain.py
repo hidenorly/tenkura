@@ -23,9 +23,21 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    ElementNotInteractableException,
+    TimeoutException,
+    StaleElementReferenceException
+)
 from PIL import Image
 from io import BytesIO
 from tenkura_get_weather import TenkuraFilterUtil
+
+import time
+from selenium.webdriver.common.by import By
+
+import threading
+from selenium.webdriver.common.by import By
 
 
 class WeatherNews:
@@ -55,6 +67,7 @@ class WeatherNews:
 			self.offset_y = 90
 
 		options = webdriver.ChromeOptions()
+		options.page_load_strategy = 'eager'
 		options.add_argument('--headless')
 		options.add_argument(f"user-agent={userAgent}")
 		self.driver = driver = webdriver.Chrome(options=options)
@@ -63,18 +76,23 @@ class WeatherNews:
 	def open(self):
 		driver = self.driver
 		driver.get("https://weathernews.jp/mountain/")
-		self.wait = wait = WebDriverWait(driver, 2)
+		self.wait = wait = WebDriverWait(driver, 3)
 		try:
-			wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.leaflet-control-zoom-in")))
+			wait.until(EC.visibility_of_element_located((By.ID, "map")))
 		except:
 			pass
 
 		# zoom in
-		self.zoom_in_map(7)
-		self.move_map(-100,-100)
-		self.move_map(-100,-80)
-		self.move_map(-100,0)
+		self.zoom_in_map(3)
+		self.move_map(-50,-50)
+		self.zoom_in_map(3)
 		self.move_map(-50,0)
+		self.zoom_in_map(3)
+		self.move_map(-100,100)
+		#self.move_map(-100,-100)
+		#self.move_map(-100,-80)
+		#self.move_map(-100,0)
+		#self.move_map(-50,0)
 
 		# scroll down to find calendar
 		self.scroll_until_visible("土")
@@ -82,15 +100,31 @@ class WeatherNews:
 
 	def zoom_in_map(self, times=3):
 		driver = self.driver
-		zoom_in_button = driver.find_element(By.CSS_SELECTOR, "a.leaflet-control-zoom-in")
-		if not zoom_in_button:
-			zoom_in_button = driver.find_element(By.XPATH, "//a[@class='leaflet-control-zoom-in']")
-		if not zoom_in_button:
-			zoom_in_button = driver.find_element(By.XPATH, "//a[span[text()='+']]")
-		if zoom_in_button:
-			for _ in range(times):
-				zoom_in_button.click()
-				time.sleep(0.1)
+		wait = self.wait
+		zoom_in_button = wait.until(
+			EC.presence_of_element_located((By.CSS_SELECTOR, "a.leaflet-control-zoom-in"))
+		)
+
+		#driver.execute_script("arguments[0].scrollIntoView(true);", zoom_in_button)
+		driver.execute_script("arguments[0].scrollIntoView({block: 'nearest', inline: 'nearest'});", zoom_in_button)
+		time.sleep(0.2)
+
+		ActionChains(driver).move_to_element(zoom_in_button).perform()
+		time.sleep(0.2)
+
+		for _ in range(times):
+			try:
+				if zoom_in_button.is_displayed():
+					try:
+						zoom_in_button.click()
+					except (ElementClickInterceptedException, ElementNotInteractableException):
+						driver.execute_script("arguments[0].click();", zoom_in_button)
+
+				time.sleep(0.5)
+			except (TimeoutException, StaleElementReferenceException) as e:
+				print(f"Zoom in failed at attempt: {e}")
+			break
+
 
 	def move_map(self, x_offset, y_offset):
 		driver = self.driver
@@ -114,7 +148,9 @@ class WeatherNews:
 		wait = self.wait
 		body = driver.find_element(By.TAG_NAME, "body")
 		button = None
-		while True:
+		max_try = 100
+		try_count = 0
+		while True and try_count<max_try:
 			try:
 				button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
 				# try to click (assume to receive exception)
@@ -126,6 +162,7 @@ class WeatherNews:
 				pass
 			body.send_keys(Keys.ARROW_DOWN)
 			time.sleep(0.1)
+			try_count += 1
 
 
 	def cropped_capture(self, filename, sx, sy, ex, ey):
@@ -162,11 +199,14 @@ class WeatherNews:
 			date_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
 			wday_text = button.find_element(By.CSS_SELECTOR, ".week-item-wday").text.strip()
 			day_only = date_text.replace(wday_text, "").strip()
-			#print(f"Date: {day_only}, Week: {wday_text}")	
-			button.click()
+			#print(f"Date: {day_only}, Week: {wday_text}")
+			try:
+				button.click()
+			except:
+				pass
 			time.sleep(1)
 			map_element = None
-			#map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+			map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
 			if not filename:
 				if wday_text in self.WEEK_FILENAME:
 					filename = self.WEEK_FILENAME[wday_text]
