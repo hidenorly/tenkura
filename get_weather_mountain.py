@@ -39,6 +39,76 @@ from selenium.webdriver.common.by import By
 import threading
 from selenium.webdriver.common.by import By
 
+class AdWatcher:
+	def __init__(self, driver, interval=0.5):
+		self.driver = driver
+		self.interval = interval
+		self.running = False
+		self.thread = None
+		self.handlers = []
+
+	def start(self):
+		self.running = True
+		self._schedule()
+
+	def stop(self):
+		self.running = False
+		if self.thread:
+			self.thread.cancel()
+
+	def _schedule(self):
+		if self.running:
+			self.thread = threading.Timer(self.interval, self._check)
+			self.thread.start()
+
+	def _check(self):
+		print("check...")
+		if self.detect_ad():
+			print("ad detected!")
+			self.notify_handlers()
+		self._schedule()
+
+	def detect_ad(self):
+		current_url = self.driver.current_url
+		if "#google_vignette" in current_url:
+			return True
+		return False
+
+		try:
+			iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+			for iframe in iframes:
+				self.driver.switch_to.frame(iframe)
+				try:
+					close_button = self.driver.find_element(By.CSS_SELECTOR, "div[aria-label='Close']")
+					self.driver.switch_to.default_content()
+					time.sleep(0.5)
+					return True
+				except:
+					self.driver.switch_to.default_content()
+					time.sleep(0.5)
+					continue
+		except:
+			pass
+
+		try:
+			close_button = self.driver.find_element(By.CSS_SELECTOR, "div[aria-label='Close']")
+			self.driver.switch_to.default_content()
+			time.sleep(0.5)
+			return True
+		except:
+			pass
+
+		self.driver.switch_to.default_content()
+		time.sleep(0.5)
+		return False
+
+	def notify_handlers(self):
+		for handler in self.handlers:
+			handler()
+
+	def add_handler(self, handler_func):
+		self.handlers.append(handler_func)
+
 
 class WeatherNews:
 	def __init__(self):
@@ -73,6 +143,12 @@ class WeatherNews:
 		self.driver = driver = webdriver.Chrome(options=options)
 		driver.set_window_size(1000, 1080)
 
+		# ad watcher
+		watcher = self.watcher = AdWatcher(driver)
+		watcher.add_handler(lambda: WeatherNews.close_ad(self.driver))
+		watcher.start()
+
+
 	def open(self):
 		driver = self.driver
 		driver.get("https://weathernews.jp/mountain/")
@@ -99,6 +175,7 @@ class WeatherNews:
 
 
 	def zoom_in_map(self, times=3):
+		print("zoom_in_map")
 		driver = self.driver
 		wait = self.wait
 		zoom_in_button = wait.until(
@@ -106,10 +183,16 @@ class WeatherNews:
 		)
 
 		#driver.execute_script("arguments[0].scrollIntoView(true);", zoom_in_button)
-		driver.execute_script("arguments[0].scrollIntoView({block: 'nearest', inline: 'nearest'});", zoom_in_button)
+		try:
+			driver.execute_script("arguments[0].scrollIntoView({block: 'nearest', inline: 'nearest'});", zoom_in_button)
+		except:
+			pass
 		time.sleep(0.2)
 
-		ActionChains(driver).move_to_element(zoom_in_button).perform()
+		try:
+			ActionChains(driver).move_to_element(zoom_in_button).perform()
+		except:
+			pass
 		time.sleep(0.2)
 
 		for _ in range(times):
@@ -121,12 +204,13 @@ class WeatherNews:
 						driver.execute_script("arguments[0].click();", zoom_in_button)
 
 				time.sleep(0.5)
-			except (TimeoutException, StaleElementReferenceException) as e:
-				print(f"Zoom in failed at attempt: {e}")
+			except: # (TimeoutException, StaleElementReferenceException) as e:
+				pass #print(f"Zoom in failed at attempt: {e}")
 			break
 
 
 	def move_map(self, x_offset, y_offset):
+		print("move_map")
 		driver = self.driver
 		wait = self.wait
 		map_element = None
@@ -136,21 +220,29 @@ class WeatherNews:
 			pass
 
 		if map_element:
-			actions = ActionChains(driver)
-			actions.click_and_hold(map_element).move_by_offset(x_offset, y_offset).release().perform()
+			try:
+				actions = ActionChains(driver)
+				actions.click_and_hold(map_element).move_by_offset(x_offset, y_offset).release().perform()
+			except:
+				pass
 			time.sleep(0.1)
 		else:
 			print("Unable to find the map")
 
 
 	def scroll_until_visible(self, wday):
+		print("scroll_until_visible")
 		driver = self.driver
 		wait = self.wait
-		body = driver.find_element(By.TAG_NAME, "body")
+		body = None
+		try:
+			body = driver.find_element(By.TAG_NAME, "body")
+		except:
+			pass
 		button = None
 		max_try = 100
 		try_count = 0
-		while True and try_count<max_try:
+		while try_count<max_try:
 			try:
 				button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
 				# try to click (assume to receive exception)
@@ -160,7 +252,10 @@ class WeatherNews:
 				return
 			except:
 				pass
-			body.send_keys(Keys.ARROW_DOWN)
+			try:
+				body.send_keys(Keys.ARROW_DOWN)
+			except:
+				pass
 			time.sleep(0.1)
 			try_count += 1
 
@@ -183,41 +278,58 @@ class WeatherNews:
 		"日" : "sunday.png"
 	}
 
-	def select_date_and_capture(self, wday, filename = None):
+	def select_date_and_capture(self, wday, filename = None, target_date = None):
 		driver = self.driver
 		wait = self.wait
+		print(f"target wday={wday}, target_date={target_date}")
+
+		# select wday
 		button = None
-		try:
-			#button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
-			xpath = (
-				f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]"
-			)
-			button = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-		except:
-			pass
-		if button:
-			date_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
-			wday_text = button.find_element(By.CSS_SELECTOR, ".week-item-wday").text.strip()
-			day_only = date_text.replace(wday_text, "").strip()
-			#print(f"Date: {day_only}, Week: {wday_text}")
+		#button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
+		xpaths = []
+		xpaths.append( f"//button[p[text()='{wday}'] or span[text()='{wday}']]" )
+		xpaths.append( f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]")
+		if target_date:
+			xpaths.append(f"//button[p[text()='{target_date}'] or span[text()='{target_date}']]")
+			xpaths.append( f"//button[p[contains(text(), '{target_date}') or span[contains(text(), '{target_date}')]]]")
+		for xpath in xpaths:
 			try:
+				button = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 				button.click()
+				time.sleep(1)
+				break
 			except:
 				pass
-			time.sleep(1)
-			map_element = None
-			map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
-			if not filename:
-				if wday_text in self.WEEK_FILENAME:
-					filename = self.WEEK_FILENAME[wday_text]
-				else:
-					filename = "weather_map.png"
-			if map_element:
-				map_element.screenshot(filename)
+
+		# get current wday and date
+		date_text = None
+		wday_text = None
+		day_only = None
+		if button:
+			try:
+				date_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
+				wday_text = button.find_element(By.CSS_SELECTOR, ".week-item-wday").text.strip()
+				day_only = date_text.replace(wday_text, "").strip()
+			except:
+				pass
+			print(f"Date: {day_only}, Week: {wday_text}")
+
+		# save
+		if not filename:
+			if wday_text and wday_text in self.WEEK_FILENAME:
+				filename = self.WEEK_FILENAME[wday_text]
 			else:
-				#driver.save_screenshot(filename)
-				self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
-				#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
+				filename = "weather_map.png"
+
+		map_element = None
+		map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
+		print(f"capture:{filename}")
+		if map_element:
+			map_element.screenshot(filename)
+		else:
+			#driver.save_screenshot(filename)
+			self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
+			#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
 
 	def get_weathers(self, requests):
 		for wday, filename in requests.items():
@@ -228,9 +340,49 @@ class WeatherNews:
 			self.select_date_and_capture(wday)
 
 	def close(self):
-		self.wait = None
-		self.driver.quit()
-		self.driver = None
+		if self.watcher:
+			self.watcher.stop()
+			self.watcher = None
+		if self.driver:
+			self.wait = None
+			self.driver.quit()
+			self.driver = None
+
+	# for lambda (static func)
+	def close_ad(driver):
+		print("Try to close Ad")
+		try:
+			driver.back()
+			time.sleep(0.5)
+			driver.switch_to.default_content()
+			time.sleep(0.5)
+		except:
+			pass
+		return
+
+		try:
+			iframes = driver.find_elements(By.TAG_NAME, "iframe")
+			for iframe in iframes:
+				driver.switch_to.frame(iframe)
+				try:
+					close_button = driver.find_element(By.CSS_SELECTOR, "div[aria-label='Close']")
+					close_button.click()
+					print("Closed ad.")
+					driver.switch_to.default_content()
+					return
+				except:
+					driver.switch_to.default_content()
+					continue
+		except:
+			pass
+
+		try:
+			close_button = driver.find_element(By.CSS_SELECTOR, "div[aria-label='Close']")
+			close_button.click()
+			print("Closed ad (no iframe).")
+		except:
+			pass
+		driver.switch_to.default_content()
 
 
 if __name__=="__main__":
@@ -251,7 +403,7 @@ if __name__=="__main__":
 	for _day in specifiedDates:
 		pos = _day.rfind("/")
 		if pos!=-1:
-			target_dates.append(_day[pos+1:])
+			target_dates.append( str(int(_day[pos+1:])) )
 
 	news = WeatherNews()
 	news.open()
