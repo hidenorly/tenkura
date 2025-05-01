@@ -229,7 +229,6 @@ class WeatherNews:
 		else:
 			print("Unable to find the map")
 
-
 	def scroll_until_visible(self, wday):
 		print("scroll_until_visible")
 		driver = self.driver
@@ -278,28 +277,40 @@ class WeatherNews:
 		"日" : "sunday.png"
 	}
 
+	def get_target_date_button(self, wday, target_date=None):
+		button = None
+
+		wait = self.wait
+
+		xpaths = []
+		xpaths.append( f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]")
+		if target_date:
+			xpaths.append( f"//button[p[contains(text(), '{target_date}') or span[contains(text(), '{target_date}')]]]")
+		for xpath in xpaths:
+			try:
+				buttons = wait.until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
+				for button in buttons:
+					texts = button.text.strip().split(" ")
+					for text in texts:
+						text = text.strip()
+						print(text)
+						if text == wday or (target_date and text == target_date):
+							button.click()
+							time.sleep(0.1)
+							print(f'found..{texts}:{text}')
+							break
+			except:
+				pass
+
+		return button
+
 	def select_date_and_capture(self, wday, filename = None, target_date = None):
-		driver = self.driver
 		wait = self.wait
 		print(f"target wday={wday}, target_date={target_date}")
 
 		# select wday
-		button = None
-		#button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
-		xpaths = []
-		xpaths.append( f"//button[p[text()='{wday}'] or span[text()='{wday}']]" )
-		xpaths.append( f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]")
-		if target_date:
-			xpaths.append(f"//button[p[text()='{target_date}'] or span[text()='{target_date}']]")
-			xpaths.append( f"//button[p[contains(text(), '{target_date}') or span[contains(text(), '{target_date}')]]]")
-		for xpath in xpaths:
-			try:
-				button = wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-				button.click()
-				time.sleep(1)
-				break
-			except:
-				pass
+		button = self.get_target_date_button(wday, target_date)
+		time.sleep(1)
 
 		# get current wday and date
 		date_text = None
@@ -327,7 +338,6 @@ class WeatherNews:
 		if map_element:
 			map_element.screenshot(filename)
 		else:
-			#driver.save_screenshot(filename)
 			self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
 			#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
 
