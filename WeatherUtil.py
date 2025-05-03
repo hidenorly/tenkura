@@ -68,6 +68,7 @@ class WebUtil:
     userAgent = userAgent.replace("Headless", "")
 
     options = webdriver.ChromeOptions()
+    options.page_load_strategy = 'eager'
     options.add_argument('--headless')
     options.add_argument(f"user-agent={userAgent}")
     driver = webdriver.Chrome(options=options)
