@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-#   Copyright 2024 hidenorly
+#   Copyright 2024, 2025 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 #   limitations under the License.
 
 
+import os
 import datetime
 import argparse
-import sys
-import subprocess
+import re
 import urllib.parse
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -26,95 +26,13 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import re
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import ReportUtil
 from tenkura_get_weather import ExecUtil
 from tenkura_get_weather import MountainFilterUtil
 from get_mountain_list import MountainList
-import os
-from datetime import timedelta, datetime
-import json
+from WeatherUtil import JsonCache, WebUtil
 
-
-class WebUtil:
-  @staticmethod
-  def get_web_driver(width=1920, height=1080):
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    tempDriver = webdriver.Chrome(options=options)
-    userAgent = tempDriver.execute_script("return navigator.userAgent")
-    userAgent = userAgent.replace("headless", "")
-    userAgent = userAgent.replace("Headless", "")
-
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument(f"user-agent={userAgent}")
-    driver = webdriver.Chrome(options=options)
-    driver.set_window_size(width, height)
-
-    return driver
-
-class JsonCache:
-  DEFAULT_CACHE_BASE_DIR = os.path.expanduser("~")+"/.cache"
-  DEFAULT_CACHE_EXPIRE_HOURS = 1 # an hour
-
-  def __init__(self, cacheDir = None, expireHour = None):
-    self.cacheBaseDir = cacheDir if cacheDir else JsonCache.DEFAULT_CACHE_BASE_DIR
-    self.expireHour = expireHour if expireHour else JsonCache.DEFAULT_CACHE_EXPIRE_HOURS
-
-  def ensureCacheStorage(self):
-    if not os.path.exists(self.cacheBaseDir):
-      os.makedirs(self.cacheBaseDir)
-
-  def getCacheFilename(self, url):
-    result = url
-    result = re.sub(r'^https?://', '', url)
-    result = re.sub(r'^[a-zA-Z0-9\-_]+\.[a-zA-Z]{2,}', '', result)
-    result = re.sub(r'[^a-zA-Z0-9._-]', '_', result)
-    result = re.sub(r'\.', '_', result)
-    result = re.sub(r'=', '_', result)
-    result = re.sub(r'#', '_', result)
-    result = result + ".json"
-    return result
-
-  def getCachePath(self, url):
-    return os.path.join(self.cacheBaseDir, self.getCacheFilename(url))
-
-  def storeToCache(self, url, result):
-    self.ensureCacheStorage()
-    cachePath = self.getCachePath( url )
-    dt_now = datetime.now()
-    _result = {
-      "lastUpdate":dt_now.strftime("%Y-%m-%d %H:%M:%S"),
-      "data": result
-    }
-    with open(cachePath, 'w', encoding='UTF-8') as f:
-      json.dump(_result, f, indent = 4, ensure_ascii=False)
-      f.close()
-
-  def isValidCache(self, lastUpdateString):
-    result = False
-    lastUpdate = datetime.strptime(lastUpdateString, "%Y-%m-%d %H:%M:%S")
-    dt_now = datetime.now()
-    if dt_now < ( lastUpdate+timedelta(hours=self.expireHour) ):
-      result = True
-
-    return result
-
-  def restoreFromCache(self, url):
-    result = None
-    cachePath = self.getCachePath( url )
-    if os.path.exists( cachePath ):
-      with open(cachePath, 'r', encoding='UTF-8') as f:
-        _result = json.load(f)
-        f.close()
-
-      if "lastUpdate" in _result:
-        if self.isValidCache( _result["lastUpdate"] ):
-          result = _result["data"]
-
-    return result
 
 
 class Weather:
