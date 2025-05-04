@@ -14,6 +14,10 @@ echo "" > $DAILY_REPORT
 echo "# 土日のどちらが良いか?" >> $DAILY_REPORT
 echo "" >> $DAILY_REPORT
 tozan_candidate-days.sh -dw | grep -E "20..\/.*\:" | sed -e "s/^/* /" >> $DAILY_REPORT
+echo "" >> $DAILY_REPORT
+echo "The following is by weather news" >> $DAILY_REPORT
+echo "" >> $DAILY_REPORT
+list-mountains.sh | xargs python3 ~/bin/get_weather_mountain_detail.py -dw -s -w rain,snow,thunder  | sed -e "s/^/* /" >> $DAILY_REPORT
 
 echo "" >> $DAILY_REPORT
 echo "# 週末良さそうなエリア(A)" >> $DAILY_REPORT
@@ -39,7 +43,7 @@ tozan_candidate.sh -dw -nn >> $DAILY_REPORT
 echo "" >> $DAILY_REPORT
 echo "# LLMのおすすめ" >> $DAILY_REPORT
 echo "" >> $DAILY_REPORT
-tozan_candidate-llm-local.sh >> $DAILY_REPORT
+tozan_candidate-llm-local.sh -dw >> $DAILY_REPORT
 
 echo "" >> $DAILY_REPORT
 echo "# 直近の登山レポート" >> $DAILY_REPORT
