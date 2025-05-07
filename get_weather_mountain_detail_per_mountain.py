@@ -68,7 +68,10 @@ class MountainWeather:
             except Exception as e:
                 pass
 
-        results[mountain_name] = []
+        results[mountain_name] = {}
+
+        # --- three days part
+        threse_days = results[mountain_name]["threse_days"] = []
 
         blocks = soup.select("div.today__block")
         for block in blocks:
@@ -82,7 +85,7 @@ class MountainWeather:
             wind_dir = block.select_one(".weather-wind-dir").get_text(strip=True)
             wind_spd = block.select_one(".weather-wind-spd").get_text(strip=True).replace("m/s", "").strip()
 
-            results[mountain_name].append({
+            threse_days.append({
                 "date": day_number,
                 "wday": day_of_week,
                 "weather": weather_text,
@@ -91,6 +94,34 @@ class MountainWeather:
                 "wind_direction": wind_dir,
                 "wind": wind_spd,
             })
+
+        # --- three days part
+        per_hours = results[mountain_name]["per_hours"] = []
+
+        blocks = soup.select('div.block[data-num]')
+
+        for block in blocks:
+            date_text = block.select_one('.date span').get_text(strip=True)
+            rows = block.select('.row')
+            for row in rows:
+                _time = row.select_one('.time').get_text(strip=True).replace('時', '')
+                weather_img = row.select_one('.weather img')
+                weather_icon_url = weather_img['src'] if weather_img else ''
+                temperature = row.select('p.value')[0].get_text(strip=True).replace('℃', '')
+                precipitation = row.select('p.value')[1].get_text(strip=True).replace('mm', '')
+                wind_div = row.select_one('.wind div')
+                wind_speed = wind_div.select_one('p').get_text(strip=True).replace('m', '') if wind_div else ''
+                wind_direction = wind_div['data-dir'] if wind_div and wind_div.has_attr('data-dir') else ''
+
+                per_hours.append({
+                    'date': date_text,
+                    'hour': _time,
+                    'weather_icon': weather_icon_url,
+                    'temperature_c': temperature,
+                    'precipitation_mm': precipitation,
+                    'wind_speed_mps': wind_speed,
+                    'wind_direction_deg': wind_direction,
+                })
 
         #if results[url]:
         #    self.cache.storeToCache(url, results)
@@ -109,9 +140,11 @@ if __name__=="__main__":
     result = parser.get_mountain_detail()
     for mountain_name, weathers in result.items():
         print(mountain_name)
-        for weather in weathers:
-            for key, value in weather.items():
-                print(f"{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(value,10)}")
+        for key, _weathers in weathers.items():
+            print(f"\t{key}")
+            for weather in _weathers:
+                for key, value in weather.items():
+                    print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(value,10)}")
     parser.close()
 
 
