@@ -14,6 +14,7 @@
 
 
 import os
+import re
 import platform
 import json
 from html import unescape
@@ -102,6 +103,13 @@ class MountainWeather:
 
         for block in blocks:
             date_text = block.select_one('.date span').get_text(strip=True)
+            pos1 = date_text.find("(")
+            pos2 = date_text.find(")")
+            day = date_text[0:pos1]
+            match = re.search(r'\d+', day)
+            if match:
+                day = int(match.group())
+            wday = date_text[pos1+1:pos2]
             rows = block.select('.row')
             for row in rows:
                 _time = row.select_one('.time').get_text(strip=True).replace('時', '')
@@ -114,7 +122,8 @@ class MountainWeather:
                 wind_direction = wind_div['data-dir'] if wind_div and wind_div.has_attr('data-dir') else ''
 
                 per_hours.append({
-                    'date': date_text,
+                    'date': day,
+                    'wday': wday,
                     'hour': _time,
                     'weather_icon': weather_icon_url,
                     'temperature_c': temperature,
@@ -122,6 +131,27 @@ class MountainWeather:
                     'wind_speed_mps': wind_speed,
                     'wind_direction_deg': wind_direction,
                 })
+
+        # --- weekly part
+        weekly_forecast = results[mountain_name]["per_days"] = []
+        blocks = soup.select('.week-item')
+
+        for block in blocks:
+            day = block.select_one('.week-date-wday')
+            date = block.select_one('.week-date-date')
+            icon = block.select_one('.week-wx-image img')
+            high = block.select_one('.week-high')
+            low = block.select_one('.week-low')
+
+            forecast = {
+                'date': date.text if date else None,
+                'wday': day.text if day else None,
+                'weather_icon': icon['src'] if icon else None,
+                'high_temp': high.text.replace('℃', '').strip() if high else None,
+                'low_temp': low.text.replace('℃', '').strip() if low else None
+            }
+
+            weekly_forecast.append(forecast)
 
         #if results[url]:
         #    self.cache.storeToCache(url, results)
@@ -144,7 +174,8 @@ if __name__=="__main__":
             print(f"\t{key}")
             for weather in _weathers:
                 for key, value in weather.items():
-                    print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(value,10)}")
+                    print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(str(value),10)}")
+                print("")
     parser.close()
 
 
