@@ -23,148 +23,14 @@ import datetime
 from bs4 import BeautifulSoup
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import MountainFilterUtil
-try:
-    from mountain_weather_dic import mountain_weather_dic
-except:
-    pass
 
-from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil
+from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil, WeatherConstants, WeatherUtils
 
 
 class MountainWeather:
-    weather_string = {
-        "100": "fine",
-        "101": "fine_cloud",
-        "102": "fine_rain",
-        "103": "fine_rain",
-        "104": "fine_snow",
-        "105": "fine_snow",
-        "106": "fine_rain",
-        "107": "fine_rain",
-        "108": "fine_rain",
-        "110": "fine_cloud",
-        "111": "fine_cloud",
-        "112": "fine_rain",
-        "113": "fine_rain",
-        "114": "fine_rain",
-        "115": "fine_snow",
-        "116": "fine_rain",
-        "117": "fine_snow",
-        "118": "fine_rain",
-        "119": "fine_rain",
-        "120": "fine_rain",
-        "121": "fine_cloud",
-        "122": "fine_rain",
-        "123": "fine",
-        "124": "fine",
-        "125": "fine_rain",
-        "126": "fine_rain",
-        "127": "fine_rain",
-        "128": "fine_rain",
-        "129": "fine_rain",
-        "130": "fine",
-        "131": "fine",
-        "132": "fine_cloud",
-        "140": "fine_rain",
-        "160": "fine_snow",
-        "170": "fine_snow",
-        "181": "fine_snow",
-
-        "200": "cloud",
-        "201": "cloud_fine",
-        "202": "cloud_rain",
-        "203": "cloud_rain",
-        "204": "cloud_snow",
-        "205": "cloud_snow",
-        "206": "cloud_rain",
-        "207": "cloud_rain",
-        "208": "cloud_rain",
-        "209": "cloud",
-        "210": "cloud_fine",
-        "211": "cloud_fine",
-        "212": "cloud_rain",
-        "213": "cloud_rain",
-        "214": "cloud_rain",
-        "215": "cloud_snow",
-        "216": "cloud_snow",
-        "217": "cloud_snow",
-        "218": "cloud_rain",
-        "219": "cloud_rain",
-        "220": "cloud_rain",
-        "221": "cloud_rain",
-        "222": "cloud_rain",
-        "223": "cloud_fine",
-        "224": "cloud_rain",
-        "225": "cloud_rain",
-        "226": "cloud_rain",
-        "227": "cloud_rain",
-        "228": "cloud_snow",
-        "229": "cloud_snow",
-        "230": "cloud_snow",
-        "231": "cloud",
-        "240": "cloud_rain",
-        "250": "cloud_snow",
-        "260": "cloud_snow",
-        "270": "cloud_snow",
-        "281": "cloud_snow",
-
-        "300": "rain",
-        "301": "rain_fine",
-        "302": "rain",
-        "303": "rain_snow",
-        "304": "rain",
-        "306": "rain",
-        "308": "rain",
-        "309": "rain_snow",
-        "311": "rain_fine",
-        "313": "rain_cloud",
-        "314": "rain_snow",
-        "315": "rain_snow",
-        "316": "rain_fine",
-        "317": "rain_cloud",
-        "320": "rain_fine",
-        "321": "rain_cloud",
-        "322": "rain_snow",
-        "323": "rain_fine",
-        "324": "rain_fine",
-        "325": "rain_fine",
-        "326": "rain_snow",
-        "327": "rain_snow",
-        "328": "rain",
-        "329": "rain",
-        "340": "snow",
-        "350": "rain",
-        "361": "snow_fine",
-        "371": "snow_cloud",
-
-        "400": "snow",
-        "401": "snow_fine",
-        "402": "snow_cloud",
-        "403": "snow_rain",
-        "405": "snow",
-        "406": "snow",
-        "407": "snow",
-        "409": "snow_rain",
-        "411": "snow_fine",
-        "420": "snow_fine",
-        "421": "snow_cloud",
-        "422": "snow_rain",
-        "423": "snow_rain",
-        "424": "snow_rain",
-        "425": "snow",
-        "426": "snow",
-        "427": "snow",
-        "430": "snow",
-        "450": "snow",
-
-        "500": "fine",
-        "550": "fine",
-    }
-
     def __init__(self):
         self.driver = None
         self.cache = JsonCache(os.path.join(JsonCache.DEFAULT_CACHE_BASE_DIR, "weather_detail"), 1)
-
 
     def get_all_mountain(self, url = "https://weathernews.jp/mountain/hokkaido/?target=trailhead"):
         _result = self.cache.restoreFromCache(url)
@@ -217,13 +83,8 @@ class MountainWeather:
                     high = week.select_one('.high').get_text(strip=True)
                     low = week.select_one('.low').get_text(strip=True)
                     icon_url = wx_img['src'] if wx_img else None
-                    pos1 = icon_url.rfind("/")
-                    pos2 = icon_url.rfind(".")
-                    weather_id = None
-                    if pos1!=-1 and pos2!=-1:
-                        weather_id = icon_url[pos1+1:pos2]
-                        if weather_id in self.weather_string:
-                            icon_url = self.weather_string[weather_id]
+                    icon_url = WeatherConstants.get_weather_desc(icon_url)
+
                     result["weather"].append({
                         "day" : date_list[i]['day'],
                         "wday" : date_list[i]['wday'],
@@ -244,52 +105,6 @@ class MountainWeather:
             self.driver.quit()
         self.driver = None
 
-def isMatchedDate(the_day, target_YYMMDDs):
-    if not target_YYMMDDs or target_YYMMDDs == ['']:
-        return True
-    the_day = int(the_day)
-    for targetYYMMDD in target_YYMMDDs:
-        pos = targetYYMMDD.rfind("/")
-        if pos!=-1:
-            day = int(targetYYMMDD[pos+1:])
-            if the_day == day:
-                return True
-    return False
-
-def get_weather_url_info_by_name(mountain_name):
-    for url, infos in mountain_weather_dic.items():
-        if mountain_name in infos.keys():
-            return url, infos[mountain_name]
-        else:
-            for candidate_mountain_name in infos.keys():
-                if candidate_mountain_name.find(mountain_name)!=-1:
-                    return url, infos[candidate_mountain_name]
-    return None, None
-
-def get_listurl_url_by_name(mountain_names):
-    urls = set()
-    results = {}
-    for mountain_name in mountain_names:
-        url, info = get_weather_url_info_by_name(mountain_name)
-        if url!=None:
-            urls.add(url)
-        if info!=None:
-            results[mountain_name] = info
-    return urls, results
-
-def is_matched_mountain(mountain_name, mountain_names):
-    if mountain_name in mountain_names:
-        return True
-    else:
-        for a_mountain_name in mountain_names:
-            if mountain_name.find(a_mountain_name)!=-1:
-                return True
-    return False
-
-def is_matched_weather(weather, acceptableWeatherConditions):
-    if weather in acceptableWeatherConditions:
-        return acceptableWeatherConditions[weather]
-    return True
 
 
 if __name__=="__main__":
@@ -320,10 +135,7 @@ if __name__=="__main__":
     urls.add("https://weathernews.jp/mountain/kanto/?target=trailhead")
     infoDic = {}
     open_urls  = set()
-    try:
-        urls, infoDic = get_listurl_url_by_name(mountains)
-    except:
-        pass
+    urls, infoDic = WeatherUtils.get_listurl_url_by_name(mountains)
     #print(f"urls={str(urls)}")
     #print(f"infoDic={str(infoDic)}")
     #print(str(specifiedDates))
@@ -337,9 +149,9 @@ if __name__=="__main__":
         results = weather.get_all_mountain(list_url)
         unified_results.update(results)
         for name, result in results.items():
-            if is_matched_mountain(name, mountains):
+            if WeatherUtils.is_matched_mountain(name, mountains):
                 for aWeather in result["weather"]:
-                    if isMatchedDate(aWeather["day"], specifiedDates) and is_matched_weather(aWeather["weather"], acceptableWeatherConditions):
+                    if WeatherUtils.isMatchedDate(aWeather["day"], specifiedDates) and WeatherUtils.is_matched_weather(aWeather["weather"], acceptableWeatherConditions):
                         if not name in filtered_results:
                             filtered_results[name] = []
                         filtered_results[name].append(aWeather)

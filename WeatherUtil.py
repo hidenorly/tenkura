@@ -25,6 +25,12 @@ import sys
 import subprocess
 import shlex
 
+try:
+    from mountain_weather_dic import mountain_weather_dic
+except:
+    pass
+
+
 class ReportUtil:
   @staticmethod
   def get_count(value):
@@ -39,7 +45,7 @@ class ReportUtil:
   @staticmethod
   def ljust_jp(value, length, pad = " "):
     count_length = ReportUtil.get_count(value)
-    return value + pad * (length-count_length)
+    return str(value + pad * (length-count_length))[0:length]
 
   @staticmethod
   def frontPaddingStr(str, length):
@@ -151,3 +157,215 @@ class ExecUtil:
     exec_cmd = f'{ExecUtil._getOpen()} {shlex.quote(url)}'
     result = subprocess.run(exec_cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
     return result
+
+
+class WeatherConstants:
+    def get_weather_desc(icon_url):
+      weather_id = icon_url
+
+      pos1 = icon_url.rfind("/")
+      pos2 = icon_url.rfind(".")
+      if pos1!=-1 and pos2!=-1:
+        weather_id = icon_url[pos1+1:pos2]
+
+      if weather_id in WeatherConstants.WEATHER_ID_STRING_MAP:
+        icon_url = WeatherConstants.WEATHER_ID_STRING_MAP[weather_id]
+
+      return icon_url
+
+    WEATHER_ID_STRING_MAP = {
+        "100": "fine",
+        "101": "fine_cloud",
+        "102": "fine_rain",
+        "103": "fine_rain",
+        "104": "fine_snow",
+        "105": "fine_snow",
+        "106": "fine_rain",
+        "107": "fine_rain",
+        "108": "fine_rain",
+        "110": "fine_cloud",
+        "111": "fine_cloud",
+        "112": "fine_rain",
+        "113": "fine_rain",
+        "114": "fine_rain",
+        "115": "fine_snow",
+        "116": "fine_rain",
+        "117": "fine_snow",
+        "118": "fine_rain",
+        "119": "fine_rain",
+        "120": "fine_rain",
+        "121": "fine_cloud",
+        "122": "fine_rain",
+        "123": "fine",
+        "124": "fine",
+        "125": "fine_rain",
+        "126": "fine_rain",
+        "127": "fine_rain",
+        "128": "fine_rain",
+        "129": "fine_rain",
+        "130": "fine",
+        "131": "fine",
+        "132": "fine_cloud",
+        "140": "fine_rain",
+        "160": "fine_snow",
+        "170": "fine_snow",
+        "181": "fine_snow",
+
+        "200": "cloud",
+        "201": "cloud_fine",
+        "202": "cloud_rain",
+        "203": "cloud_rain",
+        "204": "cloud_snow",
+        "205": "cloud_snow",
+        "206": "cloud_rain",
+        "207": "cloud_rain",
+        "208": "cloud_rain",
+        "209": "cloud",
+        "210": "cloud_fine",
+        "211": "cloud_fine",
+        "212": "cloud_rain",
+        "213": "cloud_rain",
+        "214": "cloud_rain",
+        "215": "cloud_snow",
+        "216": "cloud_snow",
+        "217": "cloud_snow",
+        "218": "cloud_rain",
+        "219": "cloud_rain",
+        "220": "cloud_rain",
+        "221": "cloud_rain",
+        "222": "cloud_rain",
+        "223": "cloud_fine",
+        "224": "cloud_rain",
+        "225": "cloud_rain",
+        "226": "cloud_rain",
+        "227": "cloud_rain",
+        "228": "cloud_snow",
+        "229": "cloud_snow",
+        "230": "cloud_snow",
+        "231": "cloud",
+        "240": "cloud_rain",
+        "250": "cloud_snow",
+        "260": "cloud_snow",
+        "270": "cloud_snow",
+        "281": "cloud_snow",
+
+        "300": "rain",
+        "301": "rain_fine",
+        "302": "rain",
+        "303": "rain_snow",
+        "304": "rain",
+        "306": "rain",
+        "308": "rain",
+        "309": "rain_snow",
+        "311": "rain_fine",
+        "313": "rain_cloud",
+        "314": "rain_snow",
+        "315": "rain_snow",
+        "316": "rain_fine",
+        "317": "rain_cloud",
+        "320": "rain_fine",
+        "321": "rain_cloud",
+        "322": "rain_snow",
+        "323": "rain_fine",
+        "324": "rain_fine",
+        "325": "rain_fine",
+        "326": "rain_snow",
+        "327": "rain_snow",
+        "328": "rain",
+        "329": "rain",
+        "340": "snow",
+        "350": "rain",
+        "361": "snow_fine",
+        "371": "snow_cloud",
+
+        "400": "snow",
+        "401": "snow_fine",
+        "402": "snow_cloud",
+        "403": "snow_rain",
+        "405": "snow",
+        "406": "snow",
+        "407": "snow",
+        "409": "snow_rain",
+        "411": "snow_fine",
+        "420": "snow_fine",
+        "421": "snow_cloud",
+        "422": "snow_rain",
+        "423": "snow_rain",
+        "424": "snow_rain",
+        "425": "snow",
+        "426": "snow",
+        "427": "snow",
+        "430": "snow",
+        "450": "snow",
+
+        "500": "fine",
+        "550": "fine",
+
+        "600": "fine",
+        "650": "rain",
+
+        "800": "cloud_thunder",
+        "850": "rain(heavy)",
+        "851": "rain(heavy)_fine",
+        "852": "rain(heavy)_cloud",
+        "853": "rain(heavy)_rain",
+        "853": "rain(heavy)_snow",
+        "854": "rain(heavy)_fine",
+
+        "950": "snow",
+        "951": "snow_fine",
+        "952": "snow_cloud",
+        "953": "snow_rain",
+        "954": "snow",
+    }
+
+class WeatherUtils:
+    def isMatchedDate(the_day, target_YYMMDDs):
+        if not target_YYMMDDs or target_YYMMDDs == ['']:
+            return True
+        the_day = int(the_day)
+        for targetYYMMDD in target_YYMMDDs:
+            pos = targetYYMMDD.rfind("/")
+            if pos!=-1:
+                day = int(targetYYMMDD[pos+1:])
+                if the_day == day:
+                    return True
+        return False
+
+    def get_weather_url_info_by_name(mountain_name):
+        try:
+          for url, infos in mountain_weather_dic.items():
+              if mountain_name in infos.keys():
+                  return url, infos[mountain_name]
+              else:
+                  for candidate_mountain_name in infos.keys():
+                      if candidate_mountain_name.find(mountain_name)!=-1:
+                          return url, infos[candidate_mountain_name]
+        except:
+          pass
+        return None, None
+
+    def get_listurl_url_by_name(mountain_names):
+        urls = set()
+        results = {}
+        for mountain_name in mountain_names:
+            url, info = WeatherUtils.get_weather_url_info_by_name(mountain_name)
+            if url!=None:
+                urls.add(url)
+            if info!=None:
+                results[mountain_name] = info
+        return urls, results
+
+    def is_matched_mountain(mountain_name, mountain_names):
+        if mountain_name in mountain_names:
+            return True
+        else:
+            for a_mountain_name in mountain_names:
+                if mountain_name.find(a_mountain_name)!=-1:
+                    return True
+        return False
+
+    def is_matched_weather(weather, acceptableWeatherConditions):
+        if weather in acceptableWeatherConditions:
+            return acceptableWeatherConditions[weather]
+        return True
