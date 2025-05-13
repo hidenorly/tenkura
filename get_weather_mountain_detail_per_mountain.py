@@ -31,7 +31,7 @@ try:
 except:
     pass
 
-from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil
+from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil, WeatherConstants, WeatherUtils
 
 
 class MountainWeather:
@@ -115,6 +115,7 @@ class MountainWeather:
                 _time = row.select_one('.time').get_text(strip=True).replace('時', '')
                 weather_img = row.select_one('.weather img')
                 weather_icon_url = weather_img['src'] if weather_img else ''
+                weather_icon_url = WeatherConstants.get_weather_desc(weather_icon_url)
                 temperature = row.select('p.value')[0].get_text(strip=True).replace('℃', '')
                 precipitation = row.select('p.value')[1].get_text(strip=True).replace('mm', '')
                 wind_div = row.select_one('.wind div')
@@ -146,15 +147,16 @@ class MountainWeather:
             forecast = {
                 'date': date.text if date else None,
                 'wday': day.text if day else None,
-                'weather_icon': icon['src'] if icon else None,
+                'weather_icon': WeatherConstants.get_weather_desc(icon['src']) if icon else None,
                 'high_temp': high.text.replace('℃', '').strip() if high else None,
                 'low_temp': low.text.replace('℃', '').strip() if low else None
             }
 
             weekly_forecast.append(forecast)
 
-        #if results[url]:
-        #    self.cache.storeToCache(url, results)
+        if results:
+            self.cache.storeToCache(url, results)
+
         return results
 
     def close(self):
