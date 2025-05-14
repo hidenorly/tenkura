@@ -26,10 +26,6 @@ import datetime
 from bs4 import BeautifulSoup
 from tenkura_get_weather import TenkuraFilterUtil
 from tenkura_get_weather import MountainFilterUtil
-try:
-    from mountain_weather_dic import mountain_weather_dic
-except:
-    pass
 
 from WeatherUtil import JsonCache, WebUtil, ExecUtil, ReportUtil, WeatherConstants, WeatherUtils
 
@@ -168,9 +164,25 @@ class MountainWeather:
 
 
 if __name__=="__main__":
+    parser = argparse.ArgumentParser(description='Parse command line options.')
+    parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
+    parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
+    parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
+    args = parser.parse_args()
+
+    mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
+
+    urls, infoDic = WeatherUtils.get_listurl_url_by_name(mountains)
+
+
     parser = MountainWeather()
-    result = parser.get_mountain_detail()
-    for mountain_name, weathers in result.items():
+
+    results = {}
+    for mountainName, url in infoDic.items():
+        _result = parser.get_mountain_detail(url)
+        results.update(_result)
+
+    for mountain_name, weathers in results.items():
         print(mountain_name)
         for key, _weathers in weathers.items():
             print(f"\t{key}")
