@@ -86,10 +86,10 @@ class MountainWeather:
                 "date": day_number,
                 "wday": day_of_week,
                 "weather": weather_text,
-                "max_temp": high_temp,
-                "min_temp": low_temp,
-                "wind_direction": wind_dir,
+                "high_temp": high_temp,
+                "low_temp": low_temp,
                 "wind": wind_spd,
+                "wind_direction": wind_dir,
             })
 
         # --- three days part
@@ -122,11 +122,11 @@ class MountainWeather:
                     'date': day,
                     'wday': wday,
                     'hour': _time,
-                    'weather_icon': weather_icon_url,
-                    'temperature_c': temperature,
+                    'weather': weather_icon_url,
+                    'temperature': temperature,
                     'precipitation_mm': precipitation,
-                    'wind_speed_mps': wind_speed,
-                    'wind_direction_deg': wind_direction,
+                    'wind': wind_speed,
+                    'wind_direction': wind_direction,
                 })
 
         # --- weekly part
@@ -143,7 +143,7 @@ class MountainWeather:
             forecast = {
                 'date': date.text if date else None,
                 'wday': day.text if day else None,
-                'weather_icon': WeatherConstants.get_weather_desc(icon['src']) if icon else None,
+                'weather': WeatherConstants.get_weather_desc(icon['src']) if icon else None,
                 'high_temp': high.text.replace('℃', '').strip() if high else None,
                 'low_temp': low.text.replace('℃', '').strip() if low else None
             }
@@ -163,26 +163,48 @@ class MountainWeather:
 
 
 
+def filter_specified_dates(results, targetDates):
+    filtered_result = {}
+    for mountain_name, infos in results.items():
+        _infos = {}
+        for category, data in infos.items():
+            _infos[category] = []
+            for aData in data:
+                if WeatherUtils.isMatchedDate(aData["date"], targetDates):
+                    _infos[category].append(aData)
+        filtered_result[mountain_name] = _infos
+    return filtered_result
+
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Parse command line options.')
     parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
+    parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
+    parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     args = parser.parse_args()
 
-    mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
-
-    urls, infoDic = WeatherUtils.get_listurl_url_by_name(mountains)
-
+    specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
+    if args.dateweekend:
+        weekEndDates = TenkuraFilterUtil.getWeekEndYYMMDD( datetime.datetime.now(), False )
+        specifiedDates.extend(weekEndDates)
+        specifiedDates = list(set(filter(None,specifiedDates)))
+        specifiedDates.sort(key=TenkuraFilterUtil.dateSortUtil)
 
     parser = MountainWeather()
+
+    mountains = MountainFilterUtil.mountainsIncludeExcludeFromFile( set(args.args), args.exclude, args.include )
+    urls, infoDic = WeatherUtils.get_listurl_url_by_name(mountains)
 
     results = {}
     for mountainName, url in infoDic.items():
         _result = parser.get_mountain_detail(url)
         results.update(_result)
 
-    for mountain_name, weathers in results.items():
+    filtered_result = filter_specified_dates(results, specifiedDates)
+
+    for mountain_name, weathers in filtered_result.items():
         print(mountain_name)
         for key, _weathers in weathers.items():
             print(f"\t{key}")
