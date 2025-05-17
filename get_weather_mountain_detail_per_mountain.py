@@ -162,17 +162,46 @@ class MountainWeather:
         self.driver = None
 
 
-
 def filter_specified_dates(results, targetDates):
     filtered_result = {}
     for mountain_name, infos in results.items():
         _infos = {}
         for category, data in infos.items():
-            _infos[category] = []
             for aData in data:
                 if WeatherUtils.isMatchedDate(aData["date"], targetDates):
+                    if not category in _infos:
+                        _infos[category] = []
                     _infos[category].append(aData)
         filtered_result[mountain_name] = _infos
+    return filtered_result
+
+
+def filter_weather_conditions(results, acceptableWeatherConditions):
+    filtered_result = {}
+
+    for mountain_name, infos in results.items():
+        # --- calculate weather condition accepted dates
+        available_dates = set()
+        unavailable_dates = set()
+        for category, data in infos.items():
+            for aData in data:
+                available_dates.add(int(aData["date"]))
+                if not WeatherUtils.is_matched_weather(aData["weather"], acceptableWeatherConditions):
+                    unavailable_dates.add(int(aData["date"]))
+
+        available_dates = available_dates - unavailable_dates
+
+        formulated_available_dates = set()
+        for _day in list(available_dates):
+            # make it standard date e.g. 10 -> 5/10
+            for __day in TenkuraFilterUtil.getListOfDates( str(_day) ):
+                formulated_available_dates.add( __day )
+
+        # --- filter with the calculate weather condition accepted dates
+        if formulated_available_dates:
+            _filtered_result = filter_specified_dates( { mountain_name : infos }, list(formulated_available_dates) )
+            filtered_result.update( _filtered_result )
+
     return filtered_result
 
 
@@ -181,9 +210,12 @@ if __name__=="__main__":
     parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
     parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
     parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
+    parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     args = parser.parse_args()
+
+    acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
     specifiedDates = TenkuraFilterUtil.getListOfDates( args.date )
     if args.dateweekend:
@@ -200,11 +232,12 @@ if __name__=="__main__":
     results = {}
     for mountainName, url in infoDic.items():
         _result = parser.get_mountain_detail(url)
-        results.update(_result)
+        _result = filter_specified_dates(_result, specifiedDates)
+        _result = filter_weather_conditions(_result, acceptableWeatherConditions)
+        if _result and _result[mountainName]:
+            results.update(_result)
 
-    filtered_result = filter_specified_dates(results, specifiedDates)
-
-    for mountain_name, weathers in filtered_result.items():
+    for mountain_name, weathers in results.items():
         print(mountain_name)
         for key, _weathers in weathers.items():
             print(f"\t{key}")
