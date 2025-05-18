@@ -205,15 +205,56 @@ def filter_weather_conditions(results, acceptableWeatherConditions):
     return filtered_result
 
 
+def filter_time_conditions(results, startTime, endTime):
+    if startTime==0 and endTime==24:
+        return results
+
+    filtered_result = {}
+    for mountain_name, infos in results.items():
+        filtered_result[mountain_name] = {}
+
+        # extract per-hour found dates
+        time_found_dates = set()
+        if "per_hours" in infos:
+            filtered_per_hours = []
+            for data in infos["per_hours"]:
+                time_found_dates.add(int(data["date"]))
+                if "hour" in data:
+                    hour = int(data["hour"])
+                    if hour>=startTime and hour<=endTime:
+                        filtered_per_hours.append(data)
+                else:
+                    filtered_per_hours.append(data)
+            filtered_result[mountain_name]["per_hours"] = filtered_per_hours
+
+        # omit data for per-hour found dates' data
+        omit_keys = set(infos.keys()) - set("per_hours")
+        for key in list(omit_keys):
+            _tmp = []
+            for data in infos[key]:
+                if not int(data["date"]) in time_found_dates:
+                    _tmp.append(data)
+            if _tmp:
+                filtered_result[mountain_name][key] = _tmp
+
+    return filtered_result
+
+
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Parse command line options.')
     parser.add_argument('args', nargs='*', help='mountain name such as 富士山')
+    parser.add_argument('-t', '--time', action='store', default='0-24', help='specify time range e.g. 6-15')
     parser.add_argument('-d', '--date', action='store', default='', help='specify date e.g. 2/14,2/16-2/17')
     parser.add_argument('-dw', '--dateweekend', action='store_true', help='specify if weekend (Saturday and Sunday)')
     parser.add_argument('-w', '--excludeWeatherConditions', action='store', default='', help='specify excluding weather conditions e.g. rain,thunder default is none then all weathers are ok)')
+    parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     args = parser.parse_args()
+
+
+    startTime, endTime = TenkuraFilterUtil.getTimeRange( args.time )
 
     acceptableWeatherConditions = TenkuraFilterUtil.getAcceptableWeatherConditions( args.excludeWeatherConditions.split(",") )
 
@@ -232,19 +273,26 @@ if __name__=="__main__":
     results = {}
     for mountainName, url in infoDic.items():
         _result = parser.get_mountain_detail(url)
-        _result = filter_specified_dates(_result, specifiedDates)
-        _result = filter_weather_conditions(_result, acceptableWeatherConditions)
-        if _result and _result[mountainName]:
+        _result = filter_specified_dates( _result, specifiedDates )
+        _result = filter_time_conditions( _result, startTime, endTime )
+        _result = filter_weather_conditions( _result, acceptableWeatherConditions )
+        if _result and mountainName in _result and _result[mountainName]:
             results.update(_result)
 
-    for mountain_name, weathers in results.items():
-        print(mountain_name)
-        for key, _weathers in weathers.items():
-            print(f"\t{key}")
-            for weather in _weathers:
-                for key, value in weather.items():
-                    print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(str(value),10)}")
-                print("")
+    if args.noDetails:
+        # dump just names
+        print(" ".join(sorted(results.keys())))
+    else:
+        # dump everything
+        for mountain_name, weathers in results.items():
+            print(mountain_name)
+            for key, _weathers in weathers.items():
+                print(f"\t{key}")
+                for weather in _weathers:
+                    for key, value in weather.items():
+                        print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(str(value),10)}")
+                    print("")
+
     parser.close()
 
 
