@@ -251,6 +251,7 @@ if __name__=="__main__":
     parser.add_argument('-nn', '--noDetails', action='store_true', default=False, help='specify if you want to output mountain name only')
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
+    parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
     args = parser.parse_args()
 
 
@@ -283,15 +284,57 @@ if __name__=="__main__":
         # dump just names
         print(" ".join(sorted(results.keys())))
     else:
-        # dump everything
-        for mountain_name, weathers in results.items():
-            print(mountain_name)
-            for key, _weathers in weathers.items():
-                print(f"\t{key}")
-                for weather in _weathers:
-                    for key, value in weather.items():
-                        print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(str(value),10)}")
-                    print("")
+        if args.compare:
+            # --- compare mode
+            # extract available days
+            available_days = set()
+            for mountain_name, weathers in results.items():
+                if "per_days" in weathers:
+                    for data in weathers["per_days"]:
+                        available_days.add( int(data["date"]) )
+            available_days = sorted( available_days )
+            mountain_names = sorted( results.keys() )
+
+            # extract data per available days per mountain
+            weathers = {}
+            for mountain_name in mountain_names:
+                weather_infos = results[mountain_name]
+                if "per_days" in weather_infos:
+                    info = []
+                    for target_day in available_days:
+                        is_found = False
+                        for day_info in weather_infos["per_days"]:
+                            if int(day_info["date"]) == target_day:
+                                info.append( day_info["weather"] )
+                                is_found = True
+                                break
+                        if not is_found:
+                            info.append( "" )
+                    weathers[mountain_name] = info
+
+            # show the extracted data per available days per mountain
+            ## print 1st line (name day1 day2...)
+            the_info = ""
+            for day in available_days:
+                the_info += (ReportUtil.ljust_jp(str(day), 12) + " ")
+            print(f"{ReportUtil.ljust_jp("name",15)} {the_info}")
+            ## print actual info as name day1 day2...
+            for mountain_name, day_infos in weathers.items():
+                the_info = ""
+                for day_info in day_infos:
+                    the_info += (ReportUtil.ljust_jp(day_info, 12) + " ")
+                print(f"{ReportUtil.ljust_jp(mountain_name,15)} {the_info}")
+
+        else:
+            # dump everything
+            for mountain_name, weathers in results.items():
+                print(mountain_name)
+                for key, _weathers in weathers.items():
+                    print(f"\t{key}")
+                    for weather in _weathers:
+                        for key, value in weather.items():
+                            print(f"\t\t{ReportUtil.ljust_jp(key,10)}\t{ReportUtil.ljust_jp(str(value),10)}")
+                        print("")
 
     parser.close()
 
