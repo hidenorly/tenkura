@@ -240,6 +240,81 @@ def filter_time_conditions(results, startTime, endTime):
     return filtered_result
 
 
+def get_standarized_weather(weather):
+    weather = weather.strip()
+    pos = weather.find("(")
+    if pos!=-1:
+        weather = weather[0:pos]
+    weather = weather.strip()
+    return weather
+
+def get_fallback_weather(weathers):
+    if not weathers:
+        return None
+
+    result = "fine"
+    if "cloud" in weathers:
+        result = "cloud"
+    if "thunder" in weathers:
+        result = "thunder"
+    if "snow" in weathers:
+        result = "snow"
+    if "rain" in weathers:
+        result = "rain"
+    return result
+
+
+def get_fallbacked_weathers(weathers):
+    weather1 = set()
+    weather2 = set()
+    for weather in weathers:
+        pos = weather.find("_")
+        if pos!=-1:
+            weather1.add( get_standarized_weather(weather[0:pos]) )
+            weather2.add( get_standarized_weather(weather[pos+1:]) )
+        else:
+            weather1.add( get_standarized_weather(weather) )
+    weather1 = get_fallback_weather(weather1)
+    weather2 = get_fallback_weather(weather2)
+    if not weather2 or weather1==weather2:
+        return weather1
+    return f"{weather1}_{weather2}"
+
+
+def reconstruct_perday_from_filtered_perhour(results):
+    reconstruct_result = {}
+    for mountain_name, infos in results.items():
+        reconstruct_result[mountain_name] = infos
+
+        # extract per-hour found dates
+        time_found_dates = set()
+        per_day = []
+        for i in range(32):
+            per_day.append([])
+        if "per_hours" in infos:
+            for data in infos["per_hours"]:
+                time_found_dates.add(int(data["date"]))
+                if "date" in data:
+                    date = int(data["date"])
+                    per_day[date].append(data["weather"])
+        for i in range(32):
+            if per_day[i]:
+                weather = per_day[i] = get_fallbacked_weathers(per_day[i])
+                if weather:
+                    the_day_info = {
+                        "date": i,
+                        "wday": "",
+                        "weather": weather,
+                        "high_temp": "",
+                        "low_temp": ""
+                    }
+                    if not "per_days" in reconstruct_result[mountain_name]:
+                        reconstruct_result[mountain_name]["per_days"] = []
+                    reconstruct_result[mountain_name]["per_days"].append(the_day_info)
+
+    return reconstruct_result
+
+
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Parse command line options.')
@@ -286,13 +361,14 @@ if __name__=="__main__":
     else:
         if args.compare:
             # --- compare mode
+            results = reconstruct_perday_from_filtered_perhour(results)
             # extract available days
             available_days = set()
             for mountain_name, weathers in results.items():
                 if "per_days" in weathers:
                     for data in weathers["per_days"]:
                         available_days.add( int(data["date"]) )
-            available_days = sorted( available_days )
+            #available_days = sorted( available_days )
             mountain_names = sorted( results.keys() )
 
             # extract data per available days per mountain
@@ -317,7 +393,7 @@ if __name__=="__main__":
             the_info = ""
             for day in available_days:
                 the_info += (ReportUtil.ljust_jp(str(day), 12) + " ")
-            print(f"{ReportUtil.ljust_jp("name",15)} {the_info}")
+            print(f'{ReportUtil.ljust_jp("name",15)} {the_info}')
             ## print actual info as name day1 day2...
             for mountain_name, day_infos in weathers.items():
                 the_info = ""
