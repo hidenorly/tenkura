@@ -286,6 +286,7 @@ class WeatherNews:
 		xpaths.append( f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]")
 		if target_date:
 			xpaths.append( f"//button[p[contains(text(), '{target_date}') or span[contains(text(), '{target_date}')]]]")
+		is_found = False
 		for xpath in xpaths:
 			try:
 				buttons = wait.until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
@@ -298,11 +299,15 @@ class WeatherNews:
 							button.click()
 							time.sleep(0.1)
 							print(f'found..{texts}:{text}')
+							is_found = True
 							break
 			except:
 				pass
 
-		return button
+		if is_found:
+			return button
+		else:
+			return None
 
 	def select_date_and_capture(self, wday, filename = None, target_date = None):
 		wait = self.wait
@@ -310,6 +315,8 @@ class WeatherNews:
 
 		# select wday
 		button = self.get_target_date_button(wday, target_date)
+		if not button:
+			return False
 		time.sleep(1)
 
 		# get current wday and date
@@ -340,14 +347,19 @@ class WeatherNews:
 		else:
 			self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
 			#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
+		return True
 
 	def get_weathers(self, requests):
+		success = True
 		for wday, filename in requests.items():
-			self.select_date_and_capture(wday, filename)
+			success = success and self.select_date_and_capture(wday, filename)
+		return success
 
 	def get_weathers_map(self, wdays):
+		success = True
 		for wday in wdays:
-			self.select_date_and_capture(wday)
+			success = success and self.select_date_and_capture(wday)
+		return success
 
 	def close(self):
 		if self.watcher:
@@ -418,5 +430,7 @@ if __name__=="__main__":
 	news = WeatherNews()
 	news.open()
 	#news.get_weathers( {"土":"saturday.png", "日":"sunday.png"} )
-	news.get_weathers_map(target_dates)
+	sucess = news.get_weathers_map(target_dates)
 	news.close()
+	if not sucess:
+		exit(-1)
