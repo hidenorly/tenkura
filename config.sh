@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # your location
 POS_LATITUDE="35.675889"
