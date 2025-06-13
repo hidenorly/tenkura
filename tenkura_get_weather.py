@@ -1110,7 +1110,7 @@ if __name__=="__main__":
   if args.openUrl:
     n = 0
     for key, info in mountainWeathers.items():
-      if "misc" in info:
+      if key in mountains and "misc" in info:
         if "url" in info["misc"]:
           n = n + 1
           if n>2:
