@@ -327,6 +327,7 @@ if __name__=="__main__":
     parser.add_argument('-e', '--exclude', action='append', default=[], help='specify excluding mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-i', '--include', action='append', default=[], help='specify including mountain list file e.g. climbedMountains.lst')
     parser.add_argument('-c', '--compare', action='store_true', help='compare mountains per day')
+    parser.add_argument('-o', '--openUrl', action='store_true', default=False, help='specify if you want to open the url')
     args = parser.parse_args()
 
 
@@ -347,6 +348,7 @@ if __name__=="__main__":
     urls, infoDic = WeatherUtils.get_listurl_url_by_name(mountains)
 
     results = {}
+    urls={}
     for mountainName, url in infoDic.items():
         _result = parser.get_mountain_detail(url)
         _result = filter_specified_dates( _result, specifiedDates )
@@ -354,6 +356,9 @@ if __name__=="__main__":
         _result = filter_weather_conditions( _result, acceptableWeatherConditions )
         if _result and mountainName in _result and _result[mountainName]:
             results.update(_result)
+            for mountain_name in _result.keys():
+                urls[mountain_name] = url
+                break
 
     if args.noDetails:
         # dump just names
@@ -413,5 +418,11 @@ if __name__=="__main__":
                         print("")
 
     parser.close()
+
+    if args.openUrl:
+        for mountain_name, url in urls.items():
+            ExecUtil.open(url)
+            time.sleep(1)
+
 
 
