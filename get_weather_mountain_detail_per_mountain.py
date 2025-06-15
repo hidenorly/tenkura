@@ -366,6 +366,7 @@ if __name__=="__main__":
     else:
         if args.compare:
             # --- compare mode
+            _results = results # backup
             results = reconstruct_perday_from_filtered_perhour(results)
             # extract available days
             available_days = set()
@@ -393,18 +394,41 @@ if __name__=="__main__":
                             info.append( "" )
                     weathers[mountain_name] = info
 
-            # show the extracted data per available days per mountain
-            ## print 1st line (name day1 day2...)
-            the_info = ""
-            for day in available_days:
-                the_info += (ReportUtil.ljust_jp(str(day), 12) + " ")
-            print(f'{ReportUtil.ljust_jp("name",15)} {the_info}')
-            ## print actual info as name day1 day2...
-            for mountain_name, day_infos in weathers.items():
+            if len(available_days)>1:
+                # show the extracted data per available days per mountain
+                ## print 1st line (name day1 day2...)
                 the_info = ""
-                for day_info in day_infos:
-                    the_info += (ReportUtil.ljust_jp(day_info, 12) + " ")
-                print(f"{ReportUtil.ljust_jp(mountain_name,15)} {the_info}")
+                for day in available_days:
+                    the_info += (ReportUtil.ljust_jp(str(day), 12) + " ")
+                print(f'{ReportUtil.ljust_jp("name",15)} {the_info}')
+                ## print actual info as name day1 day2...
+                for mountain_name, day_infos in weathers.items():
+                    the_info = ""
+                    for day_info in day_infos:
+                        the_info += (ReportUtil.ljust_jp(day_info, 12) + " ")
+                    print(f"{ReportUtil.ljust_jp(mountain_name,15)} {the_info}")
+            else:
+                # experimental per-hour compare mode
+                # --- print hours
+                per_hours = set()
+                for mountain_name, data in _results.items():
+                    for key, aData in data.items():
+                        if "per_hours" in data:
+                            for aData in data["per_hours"]:
+                                per_hours.add( int(aData["hour"]) )
+                per_hours = sorted(per_hours)
+                hours_label = " " * 15
+                for hour in per_hours:
+                    hours_label = hours_label + ReportUtil.ljust_jp(str(hour), 10) + " "
+                print(hours_label)
+
+                # --- print weather per hour per mountain
+                for mountain_name, data in _results.items():
+                    the_mountain_weather = ReportUtil.ljust_jp(mountain_name,15)
+                    if "per_hours" in data:
+                        for aData in data["per_hours"]:
+                            the_mountain_weather = the_mountain_weather + ReportUtil.ljust_jp(aData["weather"], 10) + " "
+                    print(the_mountain_weather)
 
         else:
             # dump everything
