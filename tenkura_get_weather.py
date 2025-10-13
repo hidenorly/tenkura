@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-#   Copyright 2021, 2022, 2023, 2024,2025 hidenorly
+#   Copyright 2021, 2022, 2023, 2024, 2025 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -718,9 +718,30 @@ class TenkuraFilterUtil:
 
     return result
 
+  try:
+    # pip install jpholiday
+    from jpholiday import JPHoliday
+    jpholiday = JPHoliday()
+  except:
+    pass
+
   @staticmethod
-  def getWeekEndYYMMDD(startDateTime, isMMDD=True):
+  def getWeekEndYYMMDD(startDateTime, isMMDD=True, search_range=2):
     weekendDateTimes = TenkuraFilterUtil.getWeekEndDates(startDateTime)
+    if len(weekendDateTimes) >= 2:
+      weekendDateTimes2 = set(weekendDateTimes)
+      for day in weekendDateTimes:
+        for i in range(search_range):
+          try:
+            _day = day - datetime.timedelta(days=i)
+            if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
+              weekendDateTimes2.add( _day )
+            _day = day + datetime.timedelta(days=i)
+            if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
+              weekendDateTimes2.add( _day )
+          except:
+            pass
+      weekendDateTimes = sorted( weekendDateTimes2 )
     result = []
     dateFormat = '%Y/%m/%d'
     if isMMDD:
@@ -729,7 +750,6 @@ class TenkuraFilterUtil:
       result.append( TenkuraFilterUtil.ensureYearMonth(theDateTime.strftime( dateFormat ), "", isMMDD ))
 
     return result
-
   @staticmethod
   def isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
     result = True
