@@ -730,6 +730,12 @@ class TenkuraFilterUtil:
     weekendDateTimes = TenkuraFilterUtil.getWeekEndDates(startDateTime)
     if len(weekendDateTimes) >= 2:
       weekendDateTimes2 = set(weekendDateTimes)
+      try:
+        _day = datetime.datetime.now()
+        if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
+          weekendDateTimes2.add( _day )
+      except:
+        pass
       for day in weekendDateTimes:
         for i in range(search_range):
           try:
@@ -750,6 +756,7 @@ class TenkuraFilterUtil:
       result.append( TenkuraFilterUtil.ensureYearMonth(theDateTime.strftime( dateFormat ), "", isMMDD ))
 
     return result
+
   @staticmethod
   def isAcceptableClimbRateRange( arrayData, acceptableClimbRates ):
     result = True
