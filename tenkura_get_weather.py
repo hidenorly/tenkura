@@ -722,6 +722,13 @@ class TenkuraFilterUtil:
     # pip install jpholiday
     from jpholiday import JPHoliday
     jpholiday = JPHoliday()
+
+    @staticmethod
+    def addIfHoliday(holidays, candidateDate, delta = 0):
+      delta = int(delta)
+      _day = candidateDate + datetime.timedelta(days=delta)
+      if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
+        holidays.add( _day )
   except:
     pass
 
@@ -730,23 +737,11 @@ class TenkuraFilterUtil:
     weekendDateTimes = TenkuraFilterUtil.getWeekEndDates(startDateTime)
     if len(weekendDateTimes) >= 2:
       weekendDateTimes2 = set(weekendDateTimes)
-      try:
-        _day = datetime.datetime.now()
-        if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
-          weekendDateTimes2.add( _day )
-      except:
-        pass
+      TenkuraFilterUtil.addIfHoliday( weekendDateTimes2, datetime.datetime.now())
       for day in weekendDateTimes:
         for i in range(search_range):
-          try:
-            _day = day - datetime.timedelta(days=i)
-            if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
-              weekendDateTimes2.add( _day )
-            _day = day + datetime.timedelta(days=i)
-            if TenkuraFilterUtil.jpholiday.is_holiday( _day ):
-              weekendDateTimes2.add( _day )
-          except:
-            pass
+          TenkuraFilterUtil.addIfHoliday( weekendDateTimes2, day, i)
+          TenkuraFilterUtil.addIfHoliday( weekendDateTimes2, day, -i)
       weekendDateTimes = sorted( weekendDateTimes2 )
     result = []
     dateFormat = '%Y/%m/%d'
