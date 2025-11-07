@@ -101,3 +101,43 @@ $ python3 get_weather.py 釧路
 ```
 $ python3 get_weather.py 皇海山
 ```
+
+# get_weather_mountain
+
+capture weather map as .png
+
+```
+python3 get_weather_mountain.py --help
+usage: get_weather_mountain.py [-h] [-d DATE] [-dw] [args ...]
+
+Parse command line options.
+
+positional arguments:
+  args                  mountain name such as 富士山
+
+options:
+  -h, --help            show this help message and exit
+  -d DATE, --date DATE  specify date e.g. 2/14,2/16-2/17
+  -dw, --dateweekend    specify if weekend (Saturday and Sunday)
+```
+
+
+# get_weather_mountain_detail
+
+detail weather info. at per-day level
+
+```
+python3 get_weather_mountain_detail.py 恵那山 -dw                                                                           
+恵那山         (https://weathernews.jp/mountain/centralalps/40918/?target=trailhead)
+  11(日) cloud_rain     16度/6度
+```
+
+
+# get_weather_mountain_detail_per_mountain
+
+detail weather info. at three_days, per-hour, per-day(weekly) level with filtering function on day, weather and time
+
+```
+python3 get_weather_mountain_detail_per_mountain.py -i ~/gunma100.csv -i ~/tochigi100.csv -i ~/chichibu.csv -i ~/yamanashi100.csv -e ~/excludes.csv -e ~/excludes-alps.csv -t 6-15 -w rain -d 5/11 -nn
+```
+
