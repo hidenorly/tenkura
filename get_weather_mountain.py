@@ -230,7 +230,7 @@ class WeatherNews:
 			print("Unable to find the map")
 
 	def scroll_until_visible(self, wday):
-		print("scroll_until_visible")
+		print(f"scroll_until_visible: {wday}")
 		driver = self.driver
 		wait = self.wait
 		body = None
@@ -239,24 +239,25 @@ class WeatherNews:
 		except:
 			pass
 		button = None
+
 		max_try = 100
 		try_count = 0
-		while try_count<max_try:
+		# search week button
+		xpath = f"//button[contains(@class, 'week-item')]//span[contains(text(), '{wday}')]"
+
+		while try_count < max_try:
 			try:
-				button = wait.until(EC.element_to_be_clickable((By.XPATH, f"//button[p/span[text()='{wday}']]")))
-				# try to click (assume to receive exception)
-				button.click()
-				# not received case menas found it!
-				time.sleep(0.1)
-				return
+				element = driver.find_element(By.XPATH, xpath)
+				if element.is_displayed():
+					print("Target wday button is now visible.")
+					return
 			except:
 				pass
-			try:
+			if body:
 				body.send_keys(Keys.ARROW_DOWN)
-			except:
-				pass
 			time.sleep(0.1)
 			try_count += 1
+
 
 
 	def cropped_capture(self, filename, sx, sy, ex, ey):
@@ -278,75 +279,92 @@ class WeatherNews:
 	}
 
 	def get_target_date_button(self, wday, target_date=None):
-		button = None
-
 		wait = self.wait
+		driver = self.driver
 
-		xpaths = []
-		xpaths.append( f"//button[p[contains(text(), '{wday}') or span[contains(text(), '{wday}')]]]")
-		if target_date:
-			xpaths.append( f"//button[p[contains(text(), '{target_date}') or span[contains(text(), '{target_date}')]]]")
-		is_found = False
-		for xpath in xpaths:
-			try:
-				buttons = wait.until(EC.presence_of_all_elements_located((By.XPATH, xpath)))
-				for button in buttons:
-					texts = button.text.strip().split(" ")
-					for text in texts:
-						text = text.strip()
-						print(text)
-						if text == wday or (target_date and text == target_date):
-							button.click()
-							time.sleep(0.1)
-							print(f'found..{texts}:{text}')
-							is_found = True
-							break
-			except:
-				pass
+		# debug...
+		print(f"Searching for -> wday: {wday}, target_date: {target_date}")
 
-		if is_found:
-			return button
-		else:
+		try:
+			# get all date buttons
+			buttons = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "button.week-item")))
+		except:
+			print("Could not find week-item buttons.")
 			return None
+
+		for button in buttons:
+			try:
+				# extract button text (e.g. "12 (日)")
+				full_text = button.text.replace("\n", " ").strip()
+
+				found = False
+
+				# check target_date
+				if target_date and str(target_date) in full_text:
+					found = True
+
+				# check wday (number)
+				elif str(wday).isdigit() and str(wday) in full_text.split():
+					found = True
+
+				# check wday (week string)
+				elif f"({wday})" in full_text:
+					found = True
+
+				if found:
+					driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", button)
+					time.sleep(0.5)
+
+					try:
+						button.click()
+					except:
+						driver.execute_script("arguments[0].click();", button)
+
+					print(f"Successfully Clicked: {full_text}")
+					time.sleep(1.5)
+					return button
+
+			except StaleElementReferenceException:
+				continue
+
+		print(f"Button not found for criteria: {wday} / {target_date}")
+		return None
 
 	def select_date_and_capture(self, wday, filename = None, target_date = None):
 		wait = self.wait
+		driver = self.driver
 		print(f"target wday={wday}, target_date={target_date}")
 
 		# select wday
 		button = self.get_target_date_button(wday, target_date)
 		if not button:
+			print(f"Failed to find button for {wday} / {target_date}")
 			return False
-		time.sleep(1)
 
-		# get current wday and date
-		date_text = None
-		wday_text = None
-		day_only = None
-		if button:
-			try:
-				date_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
-				wday_text = button.find_element(By.CSS_SELECTOR, ".week-item-wday").text.strip()
-				day_only = date_text.replace(wday_text, "").strip()
-			except:
-				pass
-			print(f"Date: {day_only}, Week: {wday_text}")
+		# get target date info.
+		try:
+			raw_text = button.find_element(By.CSS_SELECTOR, ".week-item-text").get_attribute("innerText").strip()
+			parts = raw_text.split()
+			day_num = parts[0] # "12"
+			wday_str = parts[1].replace("(","").replace(")","")
+			print(f"Confirmed Selection -> Day: {day_num}, Wday: {wday_str}")
+		except:
+			wday_str = wday
 
 		# save
 		if not filename:
-			if wday_text and wday_text in self.WEEK_FILENAME:
-				filename = self.WEEK_FILENAME[wday_text]
-			else:
-				filename = "weather_map.png"
+			filename = self.WEEK_FILENAME.get(wday_str, f"weather_{day_num}.png")
 
-		map_element = None
-		map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
-		print(f"capture:{filename}")
-		if map_element:
+		# capture map
+		try:
+			time.sleep(1.5)
+			map_element = wait.until(EC.presence_of_element_located((By.ID, "map")))
 			map_element.screenshot(filename)
-		else:
+			print(f"Saved: {filename}")
+		except Exception as e:
+			print(f"Capture failed: {e}")
 			self.cropped_capture(filename, 13*self.density, 220*self.density+self.offset_y, 568*self.density, 779*self.density+self.offset_y)
-			#self.cropped_capture(filename, 26,				253+198+78, 	  1134+10,			1200+198+78*3)
+			#self.cropped_capture(filename, 26, 253+198+78, 1134+10, 1200+198+78*3)
 		return True
 
 	def get_weathers(self, requests):
@@ -430,7 +448,7 @@ if __name__=="__main__":
 	news = WeatherNews()
 	news.open()
 	#news.get_weathers( {"土":"saturday.png", "日":"sunday.png"} )
-	sucess = news.get_weathers_map(target_dates)
+	success = news.get_weathers_map(target_dates)
 	news.close()
-	if not sucess:
+	if not success:
 		exit(-1)
