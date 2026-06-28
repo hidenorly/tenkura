@@ -15,15 +15,16 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import json
 import re
 import statistics
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta, date
 import requests
+from WeatherUtil import JsonCache
 
 LAPSE_RATE_C_PER_KM = 6.5
-
 
 @dataclass
 class WeatherPoint:
@@ -34,7 +35,6 @@ class WeatherPoint:
     wind_speed_ms: float
     wind_gust_ms: float
     weather_code: str
-
 
 @dataclass
 class WeatherQuery:
@@ -160,6 +160,15 @@ def parse_target_dates(date_spec=None, weekend=False):
 
 
 class WeatherProvider:
+    _cache = None
+
+    def __init__(self):
+        if not self._cache:
+            self._cache = JsonCache(os.path.join(JsonCache.DEFAULT_CACHE_BASE_DIR, "new_weather"))
+
+    def get_provider_id(self):
+        return NotImplementedError
+
     def get_mesh_size_km(self):
         return 10.0 #default
 
@@ -239,54 +248,122 @@ class WeatherProvider:
 
         return result
 
+    def _get_cache_uri(self, query: WeatherQuery):
+        return f"{self.get_provider_id()}_{query.lat}_{query.lon}_{query.lat}_{query.altitude}_{query.dates[0]}_{query.dates[-1]}"
+
+    def _get_cache_serializable(self, data_list):
+        result = []
+
+        for d in data_list:
+            new_data = {}
+            for key, value in asdict(d).items():
+                if isinstance(value, datetime):
+                    new_data[f"__DATETIME__{key}"] = value.isoformat()
+                else:
+                    new_data[key] = value
+            result.append( new_data )
+
+        return result
+
+    # @unused
+    def _get_from_serializable_cache(self, data_list):
+        result = []
+
+        for d in data_list:
+            new_data = {}
+            for key, value in d.items():
+                if key.startswith("__DATETIME__"):
+                    new_data[key[12:]] = datetime.fromisoformat(value)
+                else:
+                    new_data[key] = value
+            result.append( new_data )
+
+        return result
+
+    # @unused
+    def _get_cache_serializable(self, data_list):
+        result = []
+
+        for d in data_list:
+            new_data = {}
+            for key, value in asdict(d).items():
+                if isinstance(value, datetime):
+                    new_data[key] = value.isoformat()
+                else:
+                    new_data[key] = value
+            result.append( new_data )
+
+        return result
+
+    def _get_from_serializable_cache(self, data_list):
+        result = []
+        _data_list = data_list.copy()
+        for d in _data_list:
+            d['time'] = datetime.fromisoformat(d['time'])
+            result.append( WeatherPoint(**d) )
+        return result
+
+
     def get_weather(self, query: WeatherQuery):
+        result = WeatherResponse(
+                hourly={},
+                daily={},
+                dropped_dates=[]
+        )
+
         valid_dates, dropped_dates = self._clip_dates(
             query.dates
         )
 
-        if not valid_dates:
-            return WeatherResponse(
-                hourly={},
-                daily={},
-                dropped_dates=dropped_dates
+        if valid_dates:
+            uri = self._get_cache_uri(query)
+            all_points = self._cache.restoreFromCache(uri)
+            if all_points:
+                all_points = self._get_from_serializable_cache(all_points)
+            else:
+                all_points = self._fetch(
+                    query.lat,
+                    query.lon,
+                    query.altitude,
+                    valid_dates[0],
+                    valid_dates[-1],
+                )
+                _all_points = self._get_cache_serializable(all_points)
+                self._cache.storeToCache(uri, _all_points)
+
+            grouped = {}
+            for p in all_points:
+                grouped.setdefault(
+                    p.time.date(),
+                    []
+                ).append(p)
+
+            hourly = {}
+
+            for d in valid_dates:
+                points = grouped.get(d, [])
+                points = self._filter_time(
+                    points,
+                    query.time_range
+                )
+                hourly[d] = points
+
+            daily = self._aggregate_daily(hourly)
+
+            result = WeatherResponse(
+                hourly=hourly,
+                daily=daily,
+                dropped_dates=dropped_dates,
             )
 
-        all_points = self._fetch(
-            query.lat,
-            query.lon,
-            query.altitude,
-            valid_dates[0],
-            valid_dates[-1],
-        )
-
-        grouped = {}
-        for p in all_points:
-            grouped.setdefault(
-                p.time.date(),
-                []
-            ).append(p)
-
-        hourly = {}
-
-        for d in valid_dates:
-            points = grouped.get(d, [])
-            points = self._filter_time(
-                points,
-                query.time_range
-            )
-            hourly[d] = points
-
-        daily = self._aggregate_daily(hourly)
-
-        return WeatherResponse(
-            hourly=hourly,
-            daily=daily,
-            dropped_dates=dropped_dates,
-        )
+        return result
 
 
 class OpenMeteoProvider(WeatherProvider):
     OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+
+    def get_provider_id(self):
+        return "OpenMeteoProvider"
 
     def get_max_forecast_days(self):
         return 16
