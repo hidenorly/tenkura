@@ -16,6 +16,8 @@
 
 import argparse
 import os
+import sys
+import time
 import json
 import re
 import statistics
@@ -387,7 +389,33 @@ class OpenMeteoProvider(WeatherProvider):
             return "thunder"
         return "unknown"
 
+
+    def _request_with_retry(self, params):
+        delays = [1, 2, 4]
+
+        last_exc = None
+
+        for delay in delays:
+            try:
+                r = requests.get(
+                    self.OPEN_METEO_URL,
+                    params=params,
+                    timeout=(3, 10),
+                )
+                r.raise_for_status()
+                return r
+
+            except (requests.Timeout, requests.ConnectionError,) as e:
+                last_exc = e
+                time.sleep(delay)
+                print(f"retry...{e}", file=sys.stderr)
+
+        return None
+
+
     def _fetch(self, lat, lon, altitude, start_date, end_date):
+        result = []
+
         params = {
             "latitude": lat,
             "longitude": lon,
@@ -404,40 +432,36 @@ class OpenMeteoProvider(WeatherProvider):
             "timezone": "Asia/Tokyo",
         }
 
-        r = requests.get(
-            self.OPEN_METEO_URL,
-            params=params,
-            timeout=30
-        )
-        r.raise_for_status()
-        data = r.json()
+        r = self._request_with_retry(params)
+        if r is not None:
+            r.raise_for_status()
+            data = r.json()
 
-        api_elevation = data.get("elevation", altitude)
-        delta_alt = altitude - api_elevation
-        temp_adjust = -(delta_alt / 1000.0) * LAPSE_RATE_C_PER_KM
+            api_elevation = data.get("elevation", altitude)
+            delta_alt = altitude - api_elevation
+            temp_adjust = -(delta_alt / 1000.0) * LAPSE_RATE_C_PER_KM
 
-        hourly = data["hourly"]
-        result = []
+            hourly = data["hourly"]
 
-        for i, ts in enumerate(hourly["time"]):
-            t = datetime.fromisoformat(ts)
-            temp = hourly["temperature_2m"][i] + temp_adjust
+            for i, ts in enumerate(hourly["time"]):
+                t = datetime.fromisoformat(ts)
+                temp = hourly["temperature_2m"][i] + temp_adjust
 
-            result.append(
-                WeatherPoint(
-                    time=t,
-                    temperature_c=temp,
-                    precipitation_mm=hourly["precipitation"][i],
-                    precipitation_probability=hourly[
-                        "precipitation_probability"
-                    ][i],
-                    wind_speed_ms=hourly["wind_speed_10m"][i] / 3.6,
-                    wind_gust_ms=hourly["wind_gusts_10m"][i] / 3.6,
-                    weather_code=self.weather_code_to_text(
-                        hourly["weather_code"][i]
-                    ),
+                result.append(
+                    WeatherPoint(
+                        time=t,
+                        temperature_c=temp,
+                        precipitation_mm=hourly["precipitation"][i],
+                        precipitation_probability=hourly[
+                            "precipitation_probability"
+                        ][i],
+                        wind_speed_ms=hourly["wind_speed_10m"][i] / 3.6,
+                        wind_gust_ms=hourly["wind_gusts_10m"][i] / 3.6,
+                        weather_code=self.weather_code_to_text(
+                            hourly["weather_code"][i]
+                        ),
+                    )
                 )
-            )
 
         return result
 
