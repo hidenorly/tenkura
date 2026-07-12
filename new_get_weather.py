@@ -54,111 +54,129 @@ class WeatherResponse:
     dropped_dates: list[date]
 
 
-def parse_time_range(text):
-    m = re.match(r"^(\d{1,2})-(\d{1,2})$", text)
-    if not m:
-        raise ValueError("invalid time range")
+class DateTimeUtil:
+    def parse_time_range(text):
+        m = re.match(r"^(\d{1,2})-(\d{1,2})$", text)
+        if not m:
+            raise ValueError("invalid time range")
 
-    start = int(m.group(1))
-    end = int(m.group(2))
+        start = int(m.group(1))
+        end = int(m.group(2))
 
-    if start > end:
-        raise ValueError("time start > end")
+        if start > end:
+            raise ValueError("time start > end")
 
-    return start, end
-
-
-def parse_mmdd(token, today=None):
-    if today is None:
-        today = date.today()
-
-    m = re.match(r"^\s*(\d{1,2})/(\d{1,2})\s*$", token)
-    if not m:
-        raise ValueError(f"invalid date: {token}")
-
-    month = int(m.group(1))
-    day = int(m.group(2))
-
-    candidate = date(today.year, month, day)
-
-    if candidate < today:
-        candidate = date(today.year + 1, month, day)
-
-    return candidate
+        return start, end
 
 
-def parse_explicit_dates(spec, today):
-    dates = []
+    def parse_mmdd(token, today=None):
+        if today is None:
+            today = date.today()
 
-    if not spec:
+        token = token.strip()
+
+        # MM/DD
+        m = re.match(r"^(\d{1,2})/(\d{1,2})$", token)
+        if m:
+            month = int(m.group(1))
+            day = int(m.group(2))
+
+        # DD
+        else:
+            m = re.match(r"^(\d{1,2})$", token)
+            if not m:
+                raise ValueError(f"invalid date: {token}")
+
+            month = today.month
+            day = int(m.group(1))
+
+        candidate = date(today.year, month, day)
+
+        if candidate < today:
+            candidate = date(today.year + 1, month, day)
+
+        return candidate
+
+
+    def parse_explicit_dates(spec, today):
+        dates = []
+
+        if not spec:
+            return dates
+
+        for token in spec.split(","):
+            token = token.strip()
+            if not token:
+                continue
+
+            if "-" in token:
+                start_s, end_s = token.split("-", 1)
+                start = DateTimeUtil.parse_mmdd(start_s, today)
+
+                end_s = end_s.strip()
+
+                m = re.match(r"^(\d{1,2})/(\d{1,2})$", end_s)
+                if m:
+                    end_month = int(m.group(1))
+                    end_day = int(m.group(2))
+                else:
+                    m = re.match(r"^(\d{1,2})$", end_s)
+                    if not m:
+                        raise ValueError(f"invalid date range: {token}")
+
+                    end_month = start.month
+                    end_day = int(m.group(1))
+
+                if (end_month, end_day) < (start.month, start.day):
+                    end = date(start.year + 1, end_month, end_day)
+                else:
+                    end = date(start.year, end_month, end_day)
+
+                if end < start:
+                    raise ValueError(f"invalid range: {token}")
+
+                cur = start
+                while cur <= end:
+                    dates.append(cur)
+                    cur += timedelta(days=1)
+            else:
+                dates.append(DateTimeUtil.parse_mmdd(token, today))
+
         return dates
 
-    for token in spec.split(","):
-        token = token.strip()
-        if not token:
-            continue
 
-        if "-" in token:
-            start_s, end_s = token.split("-", 1)
-            start = parse_mmdd(start_s, today)
+    def get_nearest_weekend(today=None):
+        if today is None:
+            today = date.today()
 
-            end_raw = re.match(r"^\s*(\d{1,2})/(\d{1,2})\s*$", end_s)
-            if not end_raw:
-                raise ValueError(f"invalid date range: {token}")
+        weekday = today.weekday()
 
-            end_month = int(end_raw.group(1))
-            end_day = int(end_raw.group(2))
+        offsets = {
+            0: [5, 6],
+            1: [4, 5],
+            2: [3, 4],
+            3: [2, 3],
+            4: [1, 2],
+            5: [0, 1],
+            6: [0, 6, 7],
+        }
 
-            if (end_month, end_day) < (start.month, start.day):
-                end = date(start.year + 1, end_month, end_day)
-            else:
-                end = date(start.year, end_month, end_day)
-
-            if end < start:
-                raise ValueError(f"invalid range: {token}")
-
-            cur = start
-            while cur <= end:
-                dates.append(cur)
-                cur += timedelta(days=1)
-        else:
-            dates.append(parse_mmdd(token, today))
-
-    return dates
+        return [today + timedelta(days=d) for d in offsets[weekday]]
 
 
-def get_nearest_weekend(today=None):
-    if today is None:
+    def parse_target_dates(date_spec=None, weekend=False):
         today = date.today()
+        dates = []
 
-    weekday = today.weekday()
+        if weekend:
+            dates.extend(get_nearest_weekend(today))
 
-    offsets = {
-        0: [5, 6],
-        1: [4, 5],
-        2: [3, 4],
-        3: [2, 3],
-        4: [1, 2],
-        5: [0, 1],
-        6: [0, 6, 7],
-    }
+        dates.extend(DateTimeUtil.parse_explicit_dates(date_spec, today))
 
-    return [today + timedelta(days=d) for d in offsets[weekday]]
+        if not dates:
+            dates = [today]
 
-
-def parse_target_dates(date_spec=None, weekend=False):
-    today = date.today()
-    dates = []
-
-    if weekend:
-        dates.extend(get_nearest_weekend(today))
-
-    dates.extend(parse_explicit_dates(date_spec, today))
-
-    if not dates:
-        dates = [today]
-
-    return sorted(set(dates))
+        return sorted(set(dates))
 
 
 class WeatherProvider:
@@ -516,9 +534,10 @@ def print_human(day, agg):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("lat", type=float)
-    parser.add_argument("lon", type=float)
-    parser.add_argument("altitude", type=float)
+    parser.add_argument('args', nargs='*', help='lat lon altitude or mountain names')
+    #parser.add_argument("lat", type=float)
+    #parser.add_argument("lon", type=float)
+    #parser.add_argument("altitude", type=float)
 
     parser.add_argument("-p", "--provider", default="openmeteo")
     parser.add_argument("-d", "--date")
@@ -528,16 +547,19 @@ def main():
     parser.add_argument("-j", "--json", action="store_true")
 
     args = parser.parse_args()
+    args.lat = float(args.args[0])
+    args.lon = float(args.args[1])
+    args.altitude = float(args.args[2])
 
     provider = ProviderFactory.create(args.provider)
 
-    dates = parse_target_dates(
+    dates = DateTimeUtil.parse_target_dates(
         args.date,
         args.dateweekend
     )
 
     time_range = (
-        parse_time_range(args.time)
+        DateTimeUtil.parse_time_range(args.time)
         if args.time else None
     )
 
