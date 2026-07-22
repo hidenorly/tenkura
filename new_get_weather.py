@@ -169,7 +169,7 @@ class DateTimeUtil:
         dates = []
 
         if weekend:
-            dates.extend(get_nearest_weekend(today))
+            dates.extend(DateTimeUtil.get_nearest_weekend(today))
 
         dates.extend(DateTimeUtil.parse_explicit_dates(date_spec, today))
 
