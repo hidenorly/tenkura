@@ -141,3 +141,161 @@ detail weather info. at three_days, per-hour, per-day(weekly) level with filteri
 python3 get_weather_mountain_detail_per_mountain.py -i ~/gunma100.csv -i ~/tochigi100.csv -i ~/chichibu.csv -i ~/yamanashi100.csv -e ~/excludes.csv -e ~/excludes-alps.csv -t 6-15 -w rain -d 5/11 -nn
 ```
 
+
+
+# new_get_weather.py
+
+This tool can be used both as a CLI utility and as a Python library.
+
+## Python API Usage
+
+Public API:
+
+- `WeatherQuery`
+- `WeatherResponse`
+- `ProviderFactory`
+- `WeatherProvider.get_weather()`
+
+
+
+### How to use
+
+```python
+from datetime import date
+
+from new_get_weather import (
+    WeatherQuery,
+    ProviderFactory,
+)
+
+provider = ProviderFactory.create("openmeteo")
+
+query = WeatherQuery(
+    lat=35.3606,
+    lon=138.7274,
+    altitude=3776,
+    dates=[date(2026, 7, 5)],
+)
+
+response = provider.get_weather(query)
+```
+
+WeatherQuery Parameters:
+
+- `lat`: latitude
+- `lon`: longitude
+- `altitude`: altitude in meters
+- `dates`: list of target dates
+- `time_range`: optional tuple `(start_hour, end_hour)`
+
+
+```python
+WeatherResponse(
+    hourly=...,
+    daily=...,
+    dropped_dates=...
+)
+```
+
+
+### Read Daily Forecast
+
+Daily aggregated forecast is available in `response.daily`.
+
+```python
+response = provider.get_weather(query)
+
+for day, summary in response.daily.items():
+    print(day)
+    print(summary)
+```
+
+Example output:
+
+```text
+2026-06-27
+{
+  'temp_min': 2.3,
+  'temp_max': 8.7,
+  'precip_total': 3.2,
+  'precip_prob_min': 10,
+  'precip_prob_max': 70,
+  'wind_avg': 11.5,
+  'wind_max': 19.2,
+  'gust_max': 24.8,
+  'weather': ['cloudy', 'rain']
+}
+```
+
+Daily summary fields:
+
+- `temp_min`
+- `temp_max`
+- `precip_total`
+- `precip_prob_min`
+- `precip_prob_max`
+- `wind_avg`
+- `wind_max`
+- `gust_max`
+- `weather`
+
+
+### Read Hourly Forecast
+
+Hourly forecast is available in `response.hourly`.
+
+```python
+response = provider.get_weather(query)
+
+for day, points in response.hourly.items():
+    print(day)
+
+    for point in points:
+        print(
+            point.time,
+            point.temperature_c,
+            point.wind_speed_ms,
+            point.weather_code,
+        )
+```
+
+Example output:
+
+```text
+2026-07-05
+2026-07-05 00:00:00 4.2 12.1 cloudy
+2026-07-05 01:00:00 4.0 13.0 cloudy
+2026-07-05 02:00:00 3.8 11.8 rain
+```
+
+Hourly fields:
+
+- `time`
+- `temperature_c`
+- `precipitation_mm`
+- `precipitation_probability`
+- `wind_speed_ms`
+- `wind_gust_ms`
+- `weather_code`
+
+---
+
+### Restrict to Specific Time Range
+
+Use `time_range=(start_hour, end_hour)`.
+
+Example: daytime only (06:00–18:00).
+
+```python
+query = WeatherQuery(
+    lat=35.3606,
+    lon=138.7274,
+    altitude=3776,
+    dates=[date(2026, 7, 5)],
+    time_range=(6, 18),
+)
+
+response = provider.get_weather(query)
+
+print(response.daily)
+```
